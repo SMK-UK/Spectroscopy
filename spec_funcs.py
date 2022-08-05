@@ -83,3 +83,15 @@ def bin_data(y_data, bins):
             binned_size.append(len(binned_data))
             
     return binned_data, binned_size
+
+def check_str(input_string):
+
+    if any(char.isdigit() for char in input_string) == True:
+
+        char_allow = set("0123456789\n\t\r eE-+,.;")
+        validation = set((input_string))
+        logical = validation.issubset(char_allow)
+    else:
+        logical = False
+
+    return logical
