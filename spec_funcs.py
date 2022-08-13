@@ -1,3 +1,4 @@
+from cmath import isfinite
 import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib as mp
@@ -63,31 +64,23 @@ def fitlorentz(x, height, params=None, meth=None, lims=(-np.inf, np.inf)):
 
     return fit, fit_err
 
-def bin_data(y_data, bins):
-
-    bin_size = np.amax(y_data) / bins
-    binned_data = []
-    binned_size = []
-    start = 0
-    stop = len(y_data)
-
-    for multiplier in range(bins):
-        for value in y_data[start:stop]:
-            temp = []
-            if value >= (bin_size * multiplier) or value <= ((multiplier + 1) * bin_data):
-                temp.append(value)
-                start = np.where(value > bin_size * multiplier)
-                stop = np.where(bin_size * (multiplier + 1))
-            
-            binned_data.append(temp)
-            binned_size.append(len(binned_data))
-            
-    return binned_data, binned_size
-
 def check_str(input_string):
+    """
+    Checks string for certain characters
+    
+    Parameters
+    ----------
 
+    input_string : string 
+
+    Returns
+    -------
+
+    logical : Boolean
+        True or False  
+    """
     if any(char.isdigit() for char in input_string) == True:
-
+        # search input_string for any of the following characters
         char_allow = set("0123456789\n\t\r eE-+,.;")
         validation = set((input_string))
         logical = validation.issubset(char_allow)
