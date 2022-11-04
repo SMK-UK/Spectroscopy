@@ -3,7 +3,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib as mp
 
-def lorentzian(x, amp, offset, x_0, gamma):
+def lorentzian(x, amp, y_0, x_0, gamma):
     """
     Generates Lorentzian function with given parameters.
 
@@ -14,7 +14,7 @@ def lorentzian(x, amp, offset, x_0, gamma):
         Input range of frequencies
     amp : single value
         Height of peak
-    offset : Single value
+    y_0 : Single value
         Y offset
     x_0 : single value
         Central frequency of Lorentzian
@@ -28,8 +28,8 @@ def lorentzian(x, amp, offset, x_0, gamma):
         Output amplitudes as function of x
 
     """
-    return (amp / (1 + (2 * (x - x_0) / gamma) ** 2)) + offset
-
+    return (amp * ((0.5*gamma)**2/((x-x_0)**2 + (0.5*gamma)**2))) + y_0
+            
 def fitlorentz(x, height, params=None, meth=None, lims=(-np.inf, np.inf)):
     """
     Fits data to a Lorentzian function
