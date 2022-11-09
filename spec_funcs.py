@@ -43,7 +43,7 @@ def fitlorentz(x, height, params=None, meth=None, lims=(-np.inf, np.inf)):
         Amplitude values corresponding to x values
     params : 1D array, optional
         Guess values for Lorentzian function; amp, amp_0, x_0, gamma
-    meth : Single string {'lm', 'tf', 'dogbox'}, optional
+    meth : Single string {'lm', 'trf', 'dogbox'}, optional
         Method to use for optimisation. See 
         scipy.optimize.curve_fit for details
     bounds : 2-tuple of array_like, optional
