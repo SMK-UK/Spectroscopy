@@ -1,2 +1,6 @@
-spectral_analysis copy.ipynb
+.spect_venv
 compressor.ipynb
+lscan_transmission.ipynb
+lscan_transmission.py
+transmission.py
+cavity_spectrum.py
