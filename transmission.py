@@ -1,37 +1,42 @@
-'''
-Spectroscopic Data Analysis
-Sean Keenan, PhD Physics
-Quantum Memories Group, Heriot-Watt University, Edinburgh
-2021
-'''
-
 import os, re
 import numpy as np
-import numpy.ma as ma
 import matplotlib.pyplot as mp
 import scipy.interpolate as si
 import scipy.signal as ss
+import scipy.ndimage as nd
 import spec_funcs as sf
-from scipy.fftpack import rfft, irfft, fftfreq
-from statistics import mean
+import spec_anal as sa
 
 # change to gui at later date
 # polarisations as written in file names
-polarisations = ["143", "188"]
+polarisations = ["128", "140", "160", "173"]#["86", "100", "110", "131"]#["130", "136", "142", "150", "160", "170", "181"]##["270", "280", "290","300","310","320"]#["128", "140", "160", "173"]# #["130", "152", "174"]#["270", "280", "290","300","310","320"]
 
 # folder containing all the requisite subfolders and data - refrences included
-path = "C:\\Users\\sk88\\Desktop\\New Folder"
+path = "C:\\Users\\sk88\\Desktop\\0222 BB"
 
 # choose to focus on a particular wavelength range
-zoom = 1
-lower = 550
+zoom = True
+lower = 560
 upper = 650
 
-# used to convert raw data to nm (future)
-converter = 1
+# mark energies / wavelengths of interest
+view = True
+woi = [594.24, 603.23, 604.47]
 
-# save images (1 for save)
-save_fig = 0
+# value to shift each OD
+shifter = 0.2
+# correction value for reference power
+correction = 1
+
+# save images 
+save_fig = False
+
+# reference names
+refs = ['ref', 'reference', 'R']
+
+# file extension types
+exts = ".csv", ".txt", ".CSV"
+exceptions = "notes", "setup"
 
 # initialise lists
 file_list = []
@@ -46,23 +51,7 @@ OD = []
 starts = []
 stops = []
 
-# holder removes first folder from lists so only actual data is used
-holder = 0
-# walk through directory and extract all relevant files
-for root, dirs, files in os.walk(path):
-    if holder == 1:
-        folder_list.append(root)
-        temp =[]
-        for file in files:
-            if(file.endswith((".csv", ".txt"))):
-                # ignore collection data notes
-                if "notes" in file or "setup" in file:
-                    continue
-                else:
-                    temp.append(file)
-        file_list.append(temp)
-    else:
-        holder = 1
+folder_list, file_list = sa.dir_interogate(path, exts, exceptions)
 
 '''
 filter through files and seperate transmission data into groups:

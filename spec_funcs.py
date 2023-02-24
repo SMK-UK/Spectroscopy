@@ -287,7 +287,7 @@ def fitgls(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
     amp : 1D array
         Amplitude values corresponding to x values
     params : 1D array, optional
-        Guess values for Voigt profile; I, y_0, x_0g, sigma, x_0l, gamma, eta
+        Guess values for Voigt profile; y_0, amp_g, x_0g, sigma, amp_l, x_0l, gamma, eta
     meth : Single string {'lm', 'trf', 'dogbox'}, optional
         Method to use for optimisation. See 
         scipy.optimize.curve_fit for details
