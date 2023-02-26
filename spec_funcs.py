@@ -56,6 +56,35 @@ def check_len(lists):
         indexes = [[index_1, index_2] for index_1, value_1 in enumerate(lists) for index_2, value_2 in enumerate(value_1) if len(value_2) > min(lengths)]
     
     return boolean, indexes
+
+
+def plotter(x_data, y_data, axis_lbls=None, file_name=None, save=False, lims=None):
+
+    try:
+        lower = lims[0]
+        upper = lims[1]
+    except:
+        lower = [0]
+        upper = [-1]
+    
+    try:
+        data_lbl = os.path.split(file_name)[1]
+    except:
+        data_lbl = None
+
+    fig, ax = mp.subplots(figsize=(8.5))
+    ax.grid(True, color='silver', linewidth=0.5)
+    try:
+        ax.set_title(axis_lbls[0])
+        ax.set(xlabel=axis_lbls[1], ylabel=axis_lbls[2])
+    except:
+        pass
+
+    ax.plot(x_data[lower:upper], y_data[lower:upper], color=None, marker=None, linestyle='-', alpha=1, label=data_lbl)
+    ax.legend(loc='best', fontsize=8)
+
+    if save == True:
+        fig.savefig(fname=file_name + '.jpg', dpi='figure', format='jpg', bbox_inches='tight')
     
 def straight(x, a, b):
     """
