@@ -1,8 +1,9 @@
-from cmath import isfinite
-import numpy as np
-from scipy.optimize import curve_fit
-import matplotlib as mp
-from scipy.special import wofz
+'''
+Specific functions for handling spectroscopy data and analysing
+'''
+
+import os
+import matplotlib.pyplot as mp
 
 def check_str(input_string):
     """
@@ -56,255 +57,31 @@ def check_len(lists):
         indexes = [[index_1, index_2] for index_1, value_1 in enumerate(lists) for index_2, value_2 in enumerate(value_1) if len(value_2) > min(lengths)]
     
     return boolean, indexes
+
+def plotter(x_data, y_data, axis_lbls=None, file_name=None, save=False, lims=None):
+
+    try:
+        lower = lims[0]
+        upper = lims[1]
+    except:
+        lower = [0]
+        upper = [-1]
     
-def straight(x, a, b):
-    """
-    Generates straight line function with given parameters.
+    try:
+        data_lbl = os.path.split(file_name)[1]
+    except:
+        data_lbl = None
 
-    Parameters
-    ----------
+    fig, ax = mp.subplots(figsize=(8.5))
+    ax.grid(True, color='silver', linewidth=0.5)
+    try:
+        ax.set_title(axis_lbls[0])
+        ax.set(xlabel=axis_lbls[1], ylabel=axis_lbls[2])
+    except:
+        pass
 
-    x : array_like
-        Input range of x values
-    a : single value
-        gradient or slope of line
-    b : single value
-        Y-interecept value
-    
-    Returns
-    -------
+    ax.plot(x_data[lower:upper], y_data[lower:upper], color=None, marker=None, linestyle='-', alpha=1, label=data_lbl)
+    ax.legend(loc='best', fontsize=8)
 
-    out : 1-D array
-        y values as a function of x
-
-    """
-    return (a*x + b)
-
-def fitstraight(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to a straight line function
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    y : 1D array
-        y values corresponding to x values
-    params : 1D array, optional
-        Guess values for straight line; a, b
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
-    """
-
-    fit, success = curve_fit(straight, x, y, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
-
-def gaussian(x, amp, y_0, x_0, sigma):
-    """
-    Generates Gaussian with given parameters
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        Positional arguments for gaussian
-    amp : Single value
-        Maximum value of gaussian
-    y_0 : Single value
-        Y Offset
-    x_0 : Single value
-        Centre of Gaussian peak
-    sigma : Single value
-        Standard deviation of Gaussian
-
-    Returns
-    -------
-
-    1D array of height values for the positional arguments given in x
-    """
-    return amp * np.exp(-((x - x_0) ** 2) / (2 * sigma ** 2)) + y_0
-
-def fitgauss(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Returns seperate x-y Gaussian parameters from fit to 2D gaussian data
-    (height, centre_x, width_x, centre_y, width_y)
-
-    Calls to moments(data) in order to extract relevant parameters of the 
-    2D gaussian data before finding the fit to the data. See scipy.optimize.curve_fit
-    for more on data fitting.
-
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    amp : 1D array
-        Amplitude values corresponding to x values
-    params : 1D array, optional
-        Guess values for Lorentzian function; amp, amp_0, x_0, gamma
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit_data : 1D Array
-        Fitted variables: height, sigma, mean
-    fit_err : 1D Array
-        Uncertainty in fitted variables
-    """
-    fit, success = curve_fit(gaussian, x, amp, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
-
-def lorentzian(x, amp, y_0, x_0, gamma):
-    """
-    Generates Lorentzian function with given parameters.
-
-    Parameters
-    ----------
-
-    x : array_like
-        Input range of frequencies
-    amp : single value
-        Height of peak
-    y_0 : Single value
-        Y offset
-    x_0 : single value
-        Central frequency of Lorentzian
-    gamma : single value
-        FWHM of Lorentzian
-    
-    Returns
-    -------
-
-    out : 1-D array
-        Output amplitudes as function of x
-
-    """
-    return (amp * ((0.5*gamma)**2/((x-x_0)**2 + (0.5*gamma)**2))) + y_0
-            
-def fitlorentz(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to a Lorentzian function
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    amp : 1D array
-        Amplitude values corresponding to x values
-    params : 1D array, optional
-        Guess values for Lorentzian function; amp, amp_0, x_0, gamma
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
-    """
-    fit, success = curve_fit(lorentzian, x, amp, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
-
-def pseudo_voigt(x, y_0, amp_g, x_0g, sigma, amp_l, x_0l, gamma, eta):
-    """
-    Generates Pseudo Voigt profile with given parameters using GLS method.
-
-    Parameters
-    ----------
-
-    x : array_like
-        Input range of frequencies
-    y_0 : single value
-        Profile Y offset
-    amp_g : single value
-        Amplitude of Gaussian component
-    x_0g : single value
-        Central frequency of Gaussian
-    sigma : single value
-        Standard deviation of Gaussian
-    amp_l : single value
-        Amplitude of Lorentzian component
-    x_0l : single value
-        Central frequency of Lorentzian
-    Gamma : 
-        FWHM of Lorentzian
-    Eta : Single Value
-        Weighting factor of Gaussian to Lorentzian
-
-    Returns
-    -------
-
-    out : 1-D array
-        Output amplitudes as function of x
-
-    """
-    return (eta * amp_g * (np.exp(-((x - x_0g) ** 2) / (2 * sigma ** 2)))) + ((1-eta) * amp_l * ((0.5*gamma)**2/((x-x_0l)**2 + (0.5*gamma)**2))) + y_0
-
-def fitgls(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to a Voigt profile using the GLS method
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    amp : 1D array
-        Amplitude values corresponding to x values
-    params : 1D array, optional
-        Guess values for Voigt profile; y_0, amp_g, x_0g, sigma, amp_l, x_0l, gamma, eta
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
-    """
-    fit, success = curve_fit(pseudo_voigt, x, amp, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
+    if save == True:
+        fig.savefig(fname=file_name + '.jpg', dpi='figure', format='jpg', bbox_inches='tight')
