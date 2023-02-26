@@ -1,8 +1,8 @@
-from cmath import isfinite
+import os, re
 import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib as mp
-from scipy.special import wofz
+from natsort import natsorted
 
 def check_str(input_string):
     """
@@ -60,12 +60,13 @@ def check_len(lists):
 
 def plotter(x_data, y_data, axis_lbls=None, file_name=None, save=False, lims=None):
 
-    try:
-        lower = lims[0]
-        upper = lims[1]
-    except:
+    if lims == None:
         lower = [0]
         upper = [-1]
+    else:
+        zoom(y_data, lims)
+        lower = lims[0]
+        upper = lims[1]
     
     try:
         data_lbl = os.path.split(file_name)[1]
@@ -86,254 +87,208 @@ def plotter(x_data, y_data, axis_lbls=None, file_name=None, save=False, lims=Non
     if save == True:
         fig.savefig(fname=file_name + '.jpg', dpi='figure', format='jpg', bbox_inches='tight')
     
-def straight(x, a, b):
+def dir_interogate(path, extensions, exceptions):
     """
-    Generates straight line function with given parameters.
+    Interogate directory and extract all folders
+    and files with specified extensions
 
     Parameters
     ----------
 
-    x : array_like
-        Input range of x values
-    a : single value
-        gradient or slope of line
-    b : single value
-        Y-interecept value
+    path : string - main folder / directory to interrogate
+    exts : tuple - file extensions to check for in directory
+    exceptions : tuple - file extensions / strings to exclude
+
+    Returns
+    -------
+
+    folder_list : list of folder names
+    file_list : list of file names
+
+    """
+    folder_list = []
+    file_list = []
+    # holder removes first folder from lists so only actual data is used
+    holder = 0
+    # walk through directory and extract all relevant files
+    for root, dirs, files in natsorted(os.walk(path)):
+        if holder == 1:
+            if any([x in root for x in exceptions]):
+                continue
+            else:
+                folder_list.append(root)
+            temp = []
+            for file in files:
+                if(file.endswith(extensions)):
+                    # ignore collection data notes
+                    if any([x in file for x in exceptions]):
+                        continue
+                    else:
+                        temp.append(file)
+            file_list.append(temp)
+        else:
+            holder = 1
+
+    return folder_list, file_list
+
+def read_files(folder_list, file_list):
+    """
+    Create file path in a folder for parsing data in the file
+
+    Parameters
+    ----------
+
+    folder_list : list of folder names
+    file_list : list of file names
+
+    Returns
+    -------
+
+    path : file path name
+    
+    """
+    path = []
+    for index, folder in enumerate(folder_list):
+        for file in file_list[index]:
+            path.append(os.path.join(folder, file))
+    
+    return path
+
+def open_data(path):
+    """
+    Open a given file and read the first two columns to a list
+
+    Parameters
+    ----------
+
+    path : file path
     
     Returns
     -------
 
-    out : 1-D array
-        y values as a function of x
-
-    """
-    return (a*x + b)
-
-def fitstraight(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to a straight line function
+    data : list of data read from path
     
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    y : 1D array
-        y values corresponding to x values
-    params : 1D array, optional
-        Guess values for straight line; a, b
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
     """
+    x = []
+    y =[]
+    with open(path, 'r', newline='') as raw_file:
+        for row in raw_file:
+            if check_str(row) == True:
+                temp = re.split('\t|,|;', row)
+                x.append(float(temp[0]))
+                y.append(float(temp[1]))
+        raw_file.close()
 
-    fit, success = curve_fit(straight, x, y, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
+    return [x, y]
 
-    return fit, fit_err
-
-def gaussian(x, amp, y_0, x_0, sigma):
+def data_extract(paths, keys, tail=1, include=True):
     """
-    Generates Gaussian with given parameters
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        Positional arguments for gaussian
-    amp : Single value
-        Maximum value of gaussian
-    y_0 : Single value
-        Y Offset
-    x_0 : Single value
-        Centre of Gaussian peak
-    sigma : Single value
-        Standard deviation of Gaussian
-
-    Returns
-    -------
-
-    1D array of height values for the positional arguments given in x
-    """
-    return amp * np.exp(-((x - x_0) ** 2) / (2 * sigma ** 2)) + y_0
-
-def fitgauss(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Returns seperate x-y Gaussian parameters from fit to 2D gaussian data
-    (height, centre_x, width_x, centre_y, width_y)
-
-    Calls to moments(data) in order to extract relevant parameters of the 
-    2D gaussian data before finding the fit to the data. See scipy.optimize.curve_fit
-    for more on data fitting.
+    search a given path or list of paths for strings and extra the data from selected files 
+    depending on the discriminator
 
     Parameters
     ----------
 
-    x : 1D array 
-        x values of orginal data
-    amp : 1D array
-        Amplitude values corresponding to x values
-    params : 1D array, optional
-        Guess values for Lorentzian function; amp, amp_0, x_0, gamma
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit_data : 1D Array
-        Fitted variables: height, sigma, mean
-    fit_err : 1D Array
-        Uncertainty in fitted variables
-    """
-    fit, success = curve_fit(gaussian, x, amp, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
-
-def lorentzian(x, amp, y_0, x_0, gamma):
-    """
-    Generates Lorentzian function with given parameters.
-
-    Parameters
-    ----------
-
-    x : array_like
-        Input range of frequencies
-    amp : single value
-        Height of peak
-    y_0 : Single value
-        Y offset
-    x_0 : single value
-        Central frequency of Lorentzian
-    gamma : single value
-        FWHM of Lorentzian
+    path : file path
+    keys : list of key values to search for in path
+    tail : int value 1 or 0 to search head or tail of path
+    function : True or False to include the data with key or exclude
     
     Returns
     -------
 
-    out : 1-D array
-        Output amplitudes as function of x
-
-    """
-    return (amp * ((0.5*gamma)**2/((x-x_0)**2 + (0.5*gamma)**2))) + y_0
-            
-def fitlorentz(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to a Lorentzian function
+    data : list of data read from path
     
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    amp : 1D array
-        Amplitude values corresponding to x values
-    params : 1D array, optional
-        Guess values for Lorentzian function; amp, amp_0, x_0, gamma
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
     """
-    fit, success = curve_fit(lorentzian, x, amp, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
+    data = [[] for i in range(len(keys))]
+    for index, key in enumerate(keys):
+        for path in paths:
+            if include == True:
+                if key in os.path.split(path)[tail]:
+                    data[index].append(open_data(path))
+                else:
+                    continue
+            else:
+                if key in os.path.split(path)[tail]:
+                    data[index].append(open_data(path))
+                else:
+                    continue
+                    
+    return data
 
-    return fit, fit_err
-
-def pseudo_voigt(x, y_0, amp_g, x_0g, sigma, amp_l, x_0l, gamma, eta):
+def search_paths(paths, keys):
     """
-    Generates Pseudo Voigt profile with given parameters using GLS method.
+    Search paths for keys and then extract the file pathnames
 
     Parameters
     ----------
 
-    x : array_like
-        Input range of frequencies
-    y_0 : single value
-        Profile Y offset
-    amp_g : single value
-        Amplitude of Gaussian component
-    x_0g : single value
-        Central frequency of Gaussian
-    sigma : single value
-        Standard deviation of Gaussian
-    amp_l : single value
-        Amplitude of Lorentzian component
-    x_0l : single value
-        Central frequency of Lorentzian
-    Gamma : 
-        FWHM of Lorentzian
-    Eta : Single Value
-        Weighting factor of Gaussian to Lorentzian
+    paths : paths to search
+    keys : key strings to look for in path name
 
     Returns
     -------
 
-    out : 1-D array
-        Output amplitudes as function of x
+    key_paths : list of requested path names
 
     """
-    return (eta * amp_g * (np.exp(-((x - x_0g) ** 2) / (2 * sigma ** 2)))) + ((1-eta) * amp_l * ((0.5*gamma)**2/((x-x_0l)**2 + (0.5*gamma)**2))) + y_0
+    key_paths = []
+    excluded_paths = []
+    for path in paths:
+        if any(string in keys for string in path):
+            key_paths.append(path)
+        else:
+            excluded_paths.append(path)
 
-def fitgls(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to a Voigt profile using the GLS method
+    return key_paths, excluded_paths
     
+def OD_calc(reference, transmission, correction=True, c_factor=1):
+    """
+    Perform OD calculation for transmission data and adjust the reference using correction if neccesary
+
     Parameters
     ----------
 
-    x : 1D array 
-        x values of orginal data
-    amp : 1D array
-        Amplitude values corresponding to x values
-    params : 1D array, optional
-        Guess values for Voigt profile; I, y_0, x_0g, sigma, x_0l, gamma, eta
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
+    reference : data array / list to use as reference
+    transmission : data array / list of transmission data
+    correction : correction factor for the reference data
 
     Returns
     -------
 
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
-    """
-    fit, success = curve_fit(pseudo_voigt, x, amp, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
+    limits : tuple - start and stop index for the zoomed data
 
-    return fit, fit_err
+    """
+    if correction == True:
+        reference = [x*c_factor for x in reference]
+    
+    OD = np.log(reference/transmission)
+
+    return OD
+
+def zoom(data, bounds):
+    """
+    zoom in on a particular area of interest in a dataset
+
+    Parameters
+    ----------
+
+    data : list / array - data to perform zoom
+    bounds : tuple - lower and upper bounds of the region of interest
+
+    Returns
+    -------
+
+    limits : tuple - start and stop index for the zoomed data
+
+    """
+    for index, value in enumerate(data):
+        if value <= bounds[0]:
+            start = index
+        if value >= bounds[1]:
+            stop = index
+        
+    limits = (start, stop)
+
+    return limits
+
