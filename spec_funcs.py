@@ -1,8 +1,9 @@
-import os, re
-import numpy as np
-from scipy.optimize import curve_fit
-import matplotlib as mp
-from natsort import natsorted
+'''
+Specific functions for handling spectroscopy data and analysing
+'''
+
+import os
+import matplotlib.pyplot as mp
 
 def check_str(input_string):
     """
