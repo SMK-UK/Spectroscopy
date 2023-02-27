@@ -200,19 +200,21 @@ def data_extract(paths, keys, tail=1, include=True):
     data : list of data read from path
     
     """
-    data = [[] for i in range(len(keys))]
-    for index, key in enumerate(keys):
+    data = []
+    for key in keys:
+        key_data = []
         for path in paths:
             if include == True:
                 if key in os.path.split(path)[tail]:
-                    data[index].append(open_data(path))
+                    key_data.append(open_data(path))
                 else:
                     continue
             else:
                 if key in os.path.split(path)[tail]:
-                    data[index].append(open_data(path))
+                    key_data.append(open_data(path))
                 else:
                     continue
+        data.append(key_data)    
                     
     return data
 
@@ -235,7 +237,7 @@ def search_paths(paths, keys):
     key_paths = []
     excluded_paths = []
     for path in paths:
-        if any(string in keys for string in path):
+        if any([x in path for x in keys]):
             key_paths.append(path)
         else:
             excluded_paths.append(path)
@@ -262,7 +264,7 @@ def OD_calc(reference, transmission, correction=True, c_factor=1):
     if correction == True:
         reference = [x*c_factor for x in reference]
     
-    OD = np.log(reference/transmission)
+    OD = np.log([a / b for a, b in zip(reference, transmission)])
 
     return OD
 
