@@ -2,8 +2,10 @@
 Specific functions for handling spectroscopy data and analysing
 '''
 
-import os
+import os, re
+from math import log
 import matplotlib.pyplot as mp
+from natsort import natsorted
 
 def check_str(input_string):
     """
@@ -58,14 +60,40 @@ def check_len(lists):
     
     return boolean, indexes
 
+def zoom(data, bounds):
+    """
+    zoom in on a particular area of interest in a dataset
+
+    Parameters
+    ----------
+
+    data : list / array - data to perform zoom
+    bounds : tuple - lower and upper bounds of the region of interest
+
+    Returns
+    -------
+
+    limits : tuple - start and stop index for the zoomed data
+
+    """
+    for index, value in enumerate(data):
+        if value <= bounds[0]:
+            start = index
+        if value >= bounds[1]:
+            stop = index
+        
+    limits = (start, stop)
+
+    return limits
+
 
 def plotter(x_data, y_data, axis_lbls=None, file_name=None, save=False, lims=None):
 
     if lims == None:
-        lower = [0]
-        upper = [-1]
+        lower = 0
+        upper = -1
     else:
-        zoom(y_data, lims)
+        zoom(x_data, lims)
         lower = lims[0]
         upper = lims[1]
     
@@ -74,7 +102,7 @@ def plotter(x_data, y_data, axis_lbls=None, file_name=None, save=False, lims=Non
     except:
         data_lbl = None
 
-    fig, ax = mp.subplots(figsize=(8.5))
+    fig, ax = mp.subplots(figsize=(8, 5))
     ax.grid(True, color='silver', linewidth=0.5)
     try:
         ax.set_title(axis_lbls[0])
@@ -83,7 +111,8 @@ def plotter(x_data, y_data, axis_lbls=None, file_name=None, save=False, lims=Non
         pass
 
     ax.plot(x_data[lower:upper], y_data[lower:upper], color=None, marker=None, linestyle='-', alpha=1, label=data_lbl)
-    ax.legend(loc='best', fontsize=8)
+    if data_lbl != None:
+        ax.legend(loc='best', fontsize=8)
 
     if save == True:
         fig.savefig(fname=file_name + '.jpg', dpi='figure', format='jpg', bbox_inches='tight')
@@ -245,7 +274,7 @@ def search_paths(paths, keys):
 
     return key_paths, excluded_paths
     
-def OD_calc(reference, transmission, correction=True, c_factor=1):
+def OD_calc(ref_data, trans_data, correction=True, c_factor=1):
     """
     Perform OD calculation for transmission data and adjust the reference using correction if neccesary
 
@@ -262,36 +291,15 @@ def OD_calc(reference, transmission, correction=True, c_factor=1):
     limits : tuple - start and stop index for the zoomed data
 
     """
-    if correction == True:
-        reference = [x*c_factor for x in reference]
+    OD = []
     
-    OD = np.log([a / b for a, b in zip(reference, transmission)])
-
-    return OD
-
-def zoom(data, bounds):
-    """
-    zoom in on a particular area of interest in a dataset
-
-    Parameters
-    ----------
-
-    data : list / array - data to perform zoom
-    bounds : tuple - lower and upper bounds of the region of interest
-
-    Returns
-    -------
-
-    limits : tuple - start and stop index for the zoomed data
-
-    """
-    for index, value in enumerate(data):
-        if value <= bounds[0]:
-            start = index
-        if value >= bounds[1]:
-            stop = index
+    for index in range(len(ref_data)):
+        temp = []
+        for reference in ref_data[index]:
+            if correction == True:
+                reference = [x*c_factor for x in reference]
+            for transmission in trans_data[index]:
+                temp.append([log(a / b) for a, b in zip(reference[1], transmission[1])])
+        OD.append(temp)
         
-    limits = (start, stop)
-
-    return limits
-
+    return OD
