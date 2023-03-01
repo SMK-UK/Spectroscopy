@@ -32,6 +32,27 @@ def check_str(input_string):
 
     return logical
 
+def find_polarisations(paths, tail=1):
+    """
+    Checks string tail for numbers
+    
+    Parameters
+    ----------
+
+    paths : path or list of paths
+
+    Returns
+    -------
+
+    polarisations : int or list of ints
+    """
+    polarisations = []
+    for path in paths:
+        polarisations.append(re.findall('\d+', os.path.split(path)[tail])[0])
+    
+    return polarisations
+
+
 def check_len(lists):
     """
     Checks nested list for each list lengths
@@ -73,49 +94,57 @@ def zoom(data, bounds):
     Returns
     -------
 
-    limits : tuple - start and stop index for the zoomed data
+    start, stop : start and stop index for the zoomed data
 
     """
     for index, value in enumerate(data):
         if value <= bounds[0]:
             start = index
-        if value >= bounds[1]:
+        if value <= bounds[1]:
             stop = index
-        
-    limits = (start, stop)
 
-    return limits
+    return start, stop
 
+def plotter(x_data, y_data, keys, shifter=0, axis_lbls=None, sec_axis=True, save=False, data_labels=None, lims=None, woi=None):
 
-def plotter(x_data, y_data, axis_lbls=None, file_name=None, save=False, lims=None):
-
-    if lims == None:
-        lower = 0
-        upper = -1
-    else:
-        zoom(x_data, lims)
-        lower = lims[0]
-        upper = lims[1]
-    
     try:
-        data_lbl = os.path.split(file_name)[1]
+        data_lbl = os.path.split(data_labels)[1]
     except:
         data_lbl = None
 
-    fig, ax = mp.subplots(figsize=(8, 5))
-    ax.grid(True, color='silver', linewidth=0.5)
-    try:
-        ax.set_title(axis_lbls[0])
-        ax.set(xlabel=axis_lbls[1], ylabel=axis_lbls[2])
-    except:
-        pass
+    for m, key in enumerate(keys):
+        fig, ax = mp.subplots(figsize=(8, 5))
+        ax.grid(True, color='silver', linewidth=0.5)
+        if axis_lbls != None:
+            ax.set_title('Halfwave Plate: ' + key)
+            ax.set(xlabel=axis_lbls[0], ylabel=axis_lbls[1])
+        if sec_axis == True:
+            sec_ax = ax.secondary_xaxis('top', functions= (lambda x: 1e7 / x, lambda x: 1e7 / x))
+            sec_ax.set_xlabel('Wavenumber (cm$^{-1}$)')
+        if woi != None:
+            for  vline in woi:
+                ax.axvline(x=vline, linestyle='-.')
 
-    ax.plot(x_data[lower:upper], y_data[lower:upper], color=None, marker=None, linestyle='-', alpha=1, label=data_lbl)
-    if data_lbl != None:
-        ax.legend(loc='best', fontsize=8)
+            
+        shift = 0
+        for n, x in enumerate(x_data[m]):
+            y = [value + shift for value in y_data[m][n]]
+            if lims == None:
+                lower = 0
+                upper = -1
+            else:
+                lower, upper = zoom(x, lims)
+            if data_lbl != None:
+                ax.legend(loc='best', fontsize=8)
+            ax.plot(x[lower:upper], y[lower:upper], color=None, marker=None, linestyle='-', linewidth=0.8, alpha=1, label=data_lbl)
+            shift += shifter
 
-    if save == True:
-        fig.savefig(fname=file_name + '.jpg', dpi='figure', format='jpg', bbox_inches='tight')
+        if save == True:
+            folder = os.path.split(data_labels[0])[0]
+            region = str(round(x[lower])) + '_' + str(round(x[upper])) + '_' + key
+            name = folder + '\\' + region + '.pdf'
+
+            fig.savefig(fname=name, dpi=1200, format='pdf', bbox_inches='tight')
     
 def dir_interogate(path, extensions, exceptions):
     """
@@ -281,25 +310,28 @@ def OD_calc(ref_data, trans_data, correction=True, c_factor=1):
     Parameters
     ----------
 
-    reference : data array / list to use as reference
-    transmission : data array / list of transmission data
+    reference : 2D data array / list to use as reference
+    transmission : 2D data array / list of transmission data
     correction : correction factor for the reference data
 
     Returns
     -------
 
-    limits : tuple - start and stop index for the zoomed data
-
+    x : list of x values from input x data
+    y : list of OD calculated from input y data
     """
-    OD = []
-    
+    x = []
+    y = []
     for index in range(len(ref_data)):
-        temp = []
-        for reference in ref_data[index]:
+        temp_x = []
+        temp_y = []
+        for references in ref_data[index]:
             if correction == True:
-                reference = [x*c_factor for x in reference]
+                reference = [x*c_factor for x in references[1]]
             for transmission in trans_data[index]:
-                temp.append([log(a / b) for a, b in zip(reference[1], transmission[1])])
-        OD.append(temp)
-        
-    return OD
+                temp_x.append(transmission[0])
+                temp_y.append([log(a / b) for a, b in zip(reference, transmission[1])])
+            x.append(temp_x)
+            y.append(temp_y)
+
+    return x, y
