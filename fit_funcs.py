@@ -5,64 +5,6 @@ Generic fitting functions
 import numpy as np
 from scipy.optimize import curve_fit
 
-def straight(x, a, b):
-    """
-    Generates straight line function with given parameters.
-
-    Parameters
-    ----------
-
-    x : array_like
-        Input range of x values
-    a : single value
-        gradient or slope of line
-    b : single value
-        Y-interecept value
-    
-    Returns
-    -------
-
-    out : 1-D array
-        y values as a function of x
-
-    """
-    return (a*x + b)
-
-def fitstraight(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to a straight line function
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    y : 1D array
-        y values corresponding to x values
-    params : 1D array, optional
-        Guess values for straight line; a, b
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
-    """
-
-    fit, success = curve_fit(straight, x, y, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
-
 def gaussian(x, amp, y_0, x_0, sigma):
     """
     Generates Gaussian with given parameters
@@ -256,3 +198,65 @@ def fitgls(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
     fit_err = np.sqrt(np.diag(success))
 
     return fit, fit_err
+
+def straight(x, a, b):
+    """
+    Generates straight line function with given parameters.
+
+    Parameters
+    ----------
+
+    x : array_like
+        Input range of x values
+    a : single value
+        gradient or slope of line
+    b : single value
+        Y-interecept value
+    
+    Returns
+    -------
+
+    out : 1-D array
+        y values as a function of x
+
+    """
+    return (a*x + b)
+
+def fitstraight(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
+    """
+    Fits data to a straight line function
+    
+    Parameters
+    ----------
+
+    x : 1D array 
+        x values of orginal data
+    y : 1D array
+        y values corresponding to x values
+    params : 1D array, optional
+        Guess values for straight line; a, b
+    meth : Single string {'lm', 'trf', 'dogbox'}, optional
+        Method to use for optimisation. See 
+        scipy.optimize.curve_fit for details
+    bounds : 2-tuple of array_like, optional
+        Lower and upper bounds on parameters. Defaults to 
+        no bounds. 
+        See scipy.optimize.curve_fit for details
+
+    Returns
+    -------
+
+    fit : 1D array
+        Fitted variables
+    fit_err : 1D array
+        Uncertainty in fitted variables
+    """
+
+    fit, success = curve_fit(straight, x, y, p0=params, method=meth, bounds=lims)
+    fit_err = np.sqrt(np.diag(success))
+
+    return fit, fit_err
+
+
+
+
