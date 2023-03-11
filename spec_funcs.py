@@ -9,9 +9,10 @@ import os, re
 from scipy.ndimage import gaussian_filter
 from scipy.signal import find_peaks
 
-def check_len(lists):
+def check_len(data_lists: list[list]):
     """
-    Checks nested list for each list lengths
+    Checks nested list for each list lengths and populate a list of lists
+    containing the corresponding length
     
     Parameters
     ----------
@@ -21,25 +22,29 @@ def check_len(lists):
     Returns
     -------
 
-    boolean : True or False value depending on if the lists are all the same length
-    lengths : list or single value of lengths for each list in lists
-        True or False  
+    boolean : True or False value depending on if the 
+    lists are all the same length lengths : list or 
+    single value of lengths for each list in lists
     """
-    check = [len(data) for group in lists for data in group]
-    lengths = [x for x in set(check)]
+    # creat list of all nested list lengths
+    data_set_lengths = [len(data_set_child) for data_set in data_lists 
+                        for data_set_child in data_set]
+    # check set for different lengths and populate a list
+    lengths = [x for x in set(data_set_lengths)]
     # if only one length all lengths are the same so boolean is True
     if len(lengths) == 1:
         boolean = True
         indexes = None
     else:
         boolean = False
-        indexes = [[index_1, index_2] for index_1, value_1 in enumerate(lists) for index_2, value_2 in enumerate(value_1) if len(value_2) > min(lengths)]
-    
+        indexes = [[len(x) for x in data_set_child] for data_set_child
+                    in data_lists]
+
     return boolean, indexes
 
-def check_str(input_string):
+def check_str(input_string: str):
     """
-    Checks string for certain characters
+    Checks string for certain characters and flag if true
     
     Parameters
     ----------
@@ -50,27 +55,30 @@ def check_str(input_string):
     -------
 
     logical : Boolean
-        True or False  
     """
+    # check input string for digits and flag True
     if any(char.isdigit() for char in input_string) == True:
-        # search input_string for any of the following characters
+        # search input_string for any of the following characters 
+        # and spaces / indents
         char_allow = set("0123456789\n\t\r eE-+,.;")
         validation = set((input_string))
+        # check if any allowed characters in the input string
         logical = validation.issubset(char_allow)
     else:
         logical = False
 
     return logical
 
-def data_extract(paths, keys, tail=1, include=True):
+def data_extract(paths: str, keys: list, tail: int=1, 
+                include: bool=True):
     """
-    search a given path or list of paths for strings and extra the data from selected files 
-    depending on the discriminator
+    search a given path or list of paths for strings and extract the data from
+    selected files depending on the discriminator (keys)
 
     Parameters
     ----------
 
-    path : file path
+    paths : file paths / path
     keys : list of key values to search for in path
     tail : int value 1 or 0 to search head or tail of path
     function : True or False to include the data with key or exclude
@@ -78,30 +86,38 @@ def data_extract(paths, keys, tail=1, include=True):
     Returns
     -------
 
-    data : list of data read from path
+    extracted_data : list of data read from path
+    extracted_metadata : list of metadata read from path
     
     """
-    data = []
+    extracted_data = []
+    extracted_metadata = []
     for key in keys:
-        key_data = []
+        extracted_data_children = []
+        extracted_metadata_children = []
         for path in paths:
             if include == True:
+                # extract data from path if it contains the key
                 if key in os.path.split(path)[tail]:
-                    key_data.append(open_data(path))
+                    extracted_data_children.append(open_data(path)[0])
+                    extracted_metadata_children.append(open_data(path)[1])
                 else:
                     continue
             else:
                 if key in os.path.split(path)[tail]:
-                    key_data.append(open_data(path))
+                    # extract data from path if it doesn't contain the key
+                    extracted_data_children.append(open_data(path)[0])
+                    extracted_metadata_children.append(open_data(path)[1])
                 else:
                     continue
-        data.append(key_data)    
+        extracted_data.append(extracted_data_children)
+        extracted_metadata.append(extracted_metadata_children)   
                     
-    return data
+    return extracted_data, extracted_metadata
 
-def data_shift(data_sets, shift):
+def data_shift(data_sets: list[list[list[int]]], shift: int):
     """
-    Perform value shift for each point in a list of data
+    Perform a shift for each value in a list of data
 
     Parameters
     ----------
@@ -114,21 +130,24 @@ def data_shift(data_sets, shift):
 
     shifted_sets : list of shifted data 
     """
-    shifted_sets = [[[value + shift for value in data_set] for data_set in data_sets[index]] for index in range(len(data_sets))]
+    shifted_sets = [[[value + shift for value in data_set_child]
+                    for data_set_child in data_sets[index]] for 
+                    index in range(len(data_sets))]
 
     return shifted_sets
 
-def dir_interogate(path, extensions, exceptions):
+def dir_interogate(path: str, extensions: tuple[str] or list[str], 
+                   exceptions: tuple[str] or list[str]):
     """
-    Interogate directory and extract all folders
-    and files with specified extensions
+    Interogate directory and extract all folders and files with 
+    the specified extensions
 
     Parameters
     ----------
 
     path : string - main folder / directory to interrogate
-    exts : tuple - file extensions to check for in directory
-    exceptions : tuple - file extensions / strings to exclude
+    exts : tuple / list - file extensions to check for in directory
+    exceptions : tuple / list - file extensions / strings to exclude
 
     Returns
     -------
@@ -139,7 +158,7 @@ def dir_interogate(path, extensions, exceptions):
     """
     folder_list = []
     file_list = []
-    # holder removes first folder from lists so only actual data is used
+    # holder removes parent folder from lists
     holder = 0
     # walk through directory and extract all relevant files
     for root, dirs, files in natsorted(os.walk(path)):
@@ -147,14 +166,17 @@ def dir_interogate(path, extensions, exceptions):
             if any([x in root for x in exceptions]):
                 continue
             else:
+                # populate folder list
                 folder_list.append(root)
             temp = []
             for file in files:
+                # check for file extension
                 if(file.endswith(extensions)):
                     # ignore collection data notes
                     if any([x in file for x in exceptions]):
                         continue
                     else:
+                        # populate file list
                         temp.append(file)
             file_list.append(temp)
         else:
@@ -162,9 +184,9 @@ def dir_interogate(path, extensions, exceptions):
 
     return folder_list, file_list
 
-def find_polarisations(paths, tail=1):
+def find_numbers(paths: list[str], tail: int=1):
     """
-    Checks string tail for numbers
+    Checks string for numbers
     
     Parameters
     ----------
@@ -174,15 +196,20 @@ def find_polarisations(paths, tail=1):
     Returns
     -------
 
-    polarisations : int or list of ints
+    numbers : int or list of ints
     """
-    polarisations = [re.findall('\d+', os.path.split(path)[tail])[0] for path in paths]
+    # will return combined values i.e. 187 will be returned '187' and not
+    #'1', '8', '7'
+    numbers = [re.findall('\d+', os.path.split(path)[tail])[0]
+               for path in paths]
     
-    return polarisations
+    return numbers
 
-def OD_calc(ref_data, trans_data, correction: bool=True, c_factor=1):
+def OD_calc(ref_data: list[list[int]], trans_data: list[list[int]],
+            correction: bool=True, c_factor: int=1):
     """
-    Perform OD calculation for transmission data and adjust the reference using correction if neccesary
+    Perform OD calculation for transmission data and adjust the reference
+    using the correction factor if neccesary
 
     Parameters
     ----------
@@ -197,12 +224,12 @@ def OD_calc(ref_data, trans_data, correction: bool=True, c_factor=1):
     x : list of x values from input x data
     y : list of OD calculated from input y data
     """
-    
     x = []
     y = []
     for index in range(len(ref_data)):
         temp_x = []
         temp_y = []
+        # perform correction on the reference data and then calculate the OD
         for references in ref_data[index]:
             if correction == True:
                 reference = [x*c_factor for x in references[1]]
@@ -214,7 +241,7 @@ def OD_calc(ref_data, trans_data, correction: bool=True, c_factor=1):
 
     return x, y
 
-def open_data(path):
+def open_data(path: str):
     """
     Open a given file and read the first two columns to a list
     Parameters
@@ -224,20 +251,34 @@ def open_data(path):
     Returns
     -------
     data_list : list of data read from path
+    metadata_list : list of metadata read from path
     
     """
     data_list = 0
+    metadata_list = 0
     with open(path, 'r', newline='') as raw_file:
+        # cycle through each row in the file
         for row in raw_file:
+            # check for numerical data
             if check_str(row) == True:
-                temp = [i for i in re.split(r"[\t|,|;\s]\s*", row) if i != '']
+                # generate list to populate with column data
+                data_temp = [i for i in re.split(r"[\t|,|;\s]\s*", row) if i != '']
                 if data_list == 0:
-                    data_list = [[] for _ in range(len(temp))]
-                for index, data in enumerate(temp):
+                    data_list = [[] for _ in range(len(data_temp))]
+                for index, data in enumerate(data_temp):
                     data_list[index].append((float(data)))
+            else:
+                # extract metadata
+                metadata_temp = [i for i in re.split(r"[\t|,|;\s]\s*", row) if i != '']
+                if metadata_list == 0:
+                    # generate list to populate with column metadata
+                    metadata_list = [[] for _ in range(len(metadata_temp))]
+                for index, metadata in enumerate(metadata_temp):
+                    metadata_list[index].append((metadata))
+
         raw_file.close()
 
-    return data_list
+    return data_list, metadata_list
 
 def peak_find(data_sets, args=None, tolerances=None, lims=None):
     """
