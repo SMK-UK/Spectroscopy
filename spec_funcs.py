@@ -6,7 +6,9 @@ import matplotlib.pyplot as mp
 from natsort import natsorted
 import numpy as np
 import os, re
+import pandas as pd
 from scipy.ndimage import gaussian_filter
+from scipy.fftpack import fft, fftfreq
 from scipy.signal import find_peaks
 
 def check_len(data_lists: list[list]):
@@ -69,7 +71,7 @@ def check_str(input_string: str):
 
     return logical
 
-def data_extract(paths: str, keys: list, tail: int=1, 
+def data_extract(paths: str, keys: list=None, tail: int=1, 
                 include: bool=True):
     """
     search a given path or list of paths for strings and extract the data from
@@ -79,7 +81,7 @@ def data_extract(paths: str, keys: list, tail: int=1,
     ----------
 
     paths : file paths / path
-    keys : list of key values to search for in path
+    keys : list of key values to search for in path if required
     tail : int value 1 or 0 to search head or tail of path
     function : True or False to include the data with key or exclude
     
@@ -92,28 +94,43 @@ def data_extract(paths: str, keys: list, tail: int=1,
     """
     extracted_data = []
     extracted_metadata = []
-    for key in keys:
-        extracted_data_children = []
-        extracted_metadata_children = []
+    if keys != None:
+        for key in keys:
+            extracted_data_children = []
+            extracted_metadata_children = []
+            for path in paths:
+                if include == True:
+                    # extract data from path if it contains the key
+                    if key in os.path.split(path)[tail]:
+                        extracted_data_children.append(open_data(path)[0])
+                        extracted_metadata_children.append(open_data(path)[1])
+                    else:
+                        continue
+                else:
+                    if key in os.path.split(path)[tail]:
+                        # extract data from path if it doesn't contain the key
+                        extracted_data_children.append(open_data(path)[0])
+                        extracted_metadata_children.append(open_data(path)[1])
+                    else:
+                        continue
+            extracted_data.append(extracted_data_children)
+            extracted_metadata.append(extracted_metadata_children)
+    else:
         for path in paths:
-            if include == True:
-                # extract data from path if it contains the key
-                if key in os.path.split(path)[tail]:
-                    extracted_data_children.append(open_data(path)[0])
-                    extracted_metadata_children.append(open_data(path)[1])
-                else:
-                    continue
-            else:
-                if key in os.path.split(path)[tail]:
-                    # extract data from path if it doesn't contain the key
-                    extracted_data_children.append(open_data(path)[0])
-                    extracted_metadata_children.append(open_data(path)[1])
-                else:
-                    continue
-        extracted_data.append(extracted_data_children)
-        extracted_metadata.append(extracted_metadata_children)   
-                    
+            extracted_data.append(open_data(path)[0])
+            extracted_metadata.append(open_data(path)[1])
+
     return extracted_data, extracted_metadata
+
+def data_fft(x: list, y: list, type: str=None):
+
+    N = len(x)
+    T = x[1] - x[0]
+    y_fft = fft(y)
+    freq = fftfreq(N, T)
+    fft_xy = zip(freq, y_fft)
+
+    return fft_xy
 
 def data_shift(data_sets: list[list[list[int]]], shift: int):
     """
@@ -135,6 +152,28 @@ def data_shift(data_sets: list[list[list[int]]], shift: int):
                     index in range(len(data_sets))]
 
     return shifted_sets
+
+def df_average(data_frames):
+    """
+    Average a set of data frames and return the averaged
+    data frame
+    
+    Parameters
+    ----------
+
+    data_frames : list of data frames to average  
+
+    Returns
+    -------
+
+    averaged_data : data frame containing the averaged data from
+    data_frames
+    """
+    summed = 0
+    for data_frames_child in data_frames:
+        summed += data_frames_child
+    averaged_data = summed / len(data_frames)
+    return averaged_data
 
 def dir_interogate(path: str, extensions: tuple[str] or list[str], 
                    exceptions: tuple[str] or list[str]):
@@ -257,30 +296,46 @@ def open_data(path: str):
     data_list = 0
     metadata_list = 0
     with open(path, 'r', newline='') as raw_file:
-        # cycle through each row in the file
+    # cycle through each row in the file
         for row in raw_file:
             # check for numerical data
             if check_str(row) == True:
                 # generate list to populate with column data
-                data_temp = [i for i in re.split(r"[\t|,|;\s]\s*", row) if i != '']
+                data_temp = [i for i in re.split(r"[\t|,|;]", row) if i != '']
                 if data_list == 0:
                     data_list = [[] for _ in range(len(data_temp))]
                 for index, data in enumerate(data_temp):
                     data_list[index].append((float(data)))
             else:
                 # extract metadata
-                metadata_temp = [i for i in re.split(r"[\t|,|;\s]\s*", row) if i != '']
+                metadata_temp = [i for i in re.split(r"[\t|,|;]", row) if i != '']
                 if metadata_list == 0:
                     # generate list to populate with column metadata
                     metadata_list = [[] for _ in range(len(metadata_temp))]
                 for index, metadata in enumerate(metadata_temp):
                     metadata_list[index].append((metadata))
-
         raw_file.close()
 
     return data_list, metadata_list
 
-def peak_find(data_sets, args=None, tolerances=None, lims=None):
+def open_excel(paths: str, delimiters= ','):
+    """
+    Open a given file and read the first two columns to a list
+    Parameters
+    ----------
+    path : file path
+    
+    Returns
+    -------
+    data_list : list of data read from path
+    metadata_list : list of metadata read from path
+    
+    """
+    excel_data = [pd.read_csv(path, sep='[:;,]', engine='python') for path in paths]
+
+    return excel_data
+
+def peak_find(data_sets, tolerance=None, lims=None):
     """
     Find peaks in data
 
@@ -307,14 +362,10 @@ def peak_find(data_sets, args=None, tolerances=None, lims=None):
                 lower, upper = zoom(data_sets_child, lims)
             max = np.amax(data_sets_child[lower:upper])
             min = np.amin(data_sets_child[lower:upper])
-            if args == None:
-                height = min
-                thresh = max
-            else:
-                height = min * args[0]
-                thresh = max * args[1]
-            params = height, thresh
-            peak, _ = find_peaks(data_sets_child)#, height=params[0], threshold=params[1])
+            prom = 0
+            if tolerance != None:
+                prom = max * tolerance
+            peak, _ = find_peaks(data_sets_child, prominence=prom)#, height=params[0], threshold=params[1])
             temp.append(peak)
         peaks_data.append(temp)
 
@@ -378,7 +429,7 @@ def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0, axis_lbls=N
             region = str(round(x[lower])) + '_' + str(round(x[upper])) + '_' + key
             name = folder + '\\' + region + '.png'
 
-            fig.savefig(fname=name, dpi=300, format='png', bbox_inches='tight')
+            fig.savefig(fname=name, dpi=80, format='png', bbox_inches='tight')
     
 def read_files(folder_list, file_list):
     """
@@ -467,7 +518,7 @@ def split_lists(data_sets):
     Returns
     -------
 
-    smoothed_sets : list of smoothed data
+    data_lists : separated lists
     """
 
     data_lists = [[[[temperatures[0]] for temperatures in polarizations] for polarizations in data_sets]]
