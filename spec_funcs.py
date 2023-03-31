@@ -71,7 +71,7 @@ def check_str(input_string: str):
 
     return logical
 
-def data_extract(paths: str, keys: list=None, tail: int=1, 
+def data_extract(paths: list[str], keys: list[str]=None, tail: int=1, 
                 include: bool=True):
     """
     search a given path or list of paths for strings and extract the data from
@@ -122,15 +122,38 @@ def data_extract(paths: str, keys: list=None, tail: int=1,
 
     return extracted_data, extracted_metadata
 
-def data_fft(x: list, y: list, type: str=None):
+def data_fft(times: list[list[int]], amplitudes: list[list[int]]):
+    """
+    Perform FFT calculation for amplitude component and generate the frequency
+    from times.
 
-    N = len(x)
-    T = x[1] - x[0]
-    y_fft = fft(y)
-    freq = fftfreq(N, T)
-    fft_xy = zip(freq, y_fft)
+    Parameters
+    ----------
 
-    return fft_xy
+    times : 2D data array / list to use as reference
+    amplitudes : 2D data array / list of transmission data
+
+    Returns
+    -------
+
+    frequencies : list of frequency values from input time data
+    ffts : list of fft calculated from input amplitude data
+    """
+    frequencies = []
+    ffts = []
+    for index in range(len(times)):
+        temp_freq = []
+        temp_fft = []
+        # perform correction on the reference data and then calculate the OD
+        for time_child in times[index]:
+            N = len(time_child)
+            T = time_child[1] - time_child[0]
+            temp_fft.append(np.sqrt(np.abs(fft(amplitudes[index]))))
+            temp_freq.append(fftfreq(N, T))
+        ffts.append(temp_fft)
+        frequencies.append(temp_freq)
+
+    return frequencies, ffts
 
 def data_shift(data_sets: list[list[list[int]]], shift: int):
     """
@@ -153,7 +176,7 @@ def data_shift(data_sets: list[list[list[int]]], shift: int):
 
     return shifted_sets
 
-def df_average(data_frames):
+def df_average(data_frames: list):
     """
     Average a set of data frames and return the averaged
     data frame
@@ -173,6 +196,7 @@ def df_average(data_frames):
     for data_frames_child in data_frames:
         summed += data_frames_child
     averaged_data = summed / len(data_frames)
+
     return averaged_data
 
 def dir_interogate(path: str, extensions: tuple[str] or list[str], 
@@ -222,6 +246,12 @@ def dir_interogate(path: str, extensions: tuple[str] or list[str],
             holder = 1
 
     return folder_list, file_list
+
+def excel_extract(folder_names: list[str], file_names: list[list[str]], average: bool=False):
+
+    extracted_excel = [[open_excel(os.path.join(folder, file)) for file in file_names[index]] for index, folder in enumerate(folder_names)]
+
+    return extracted_excel
 
 def find_numbers(paths: list[str], tail: int=1):
     """
@@ -318,20 +348,21 @@ def open_data(path: str):
 
     return data_list, metadata_list
 
-def open_excel(paths: str, delimiters= ','):
+def open_excel(path: str, seperators: str=','):
     """
-    Open a given file and read the first two columns to a list
+    Open a given excel / csv file and generate list
+
     Parameters
     ----------
     path : file path
     
     Returns
     -------
-    data_list : list of data read from path
-    metadata_list : list of metadata read from path
+    excel_data : pandas data frame 
     
     """
-    excel_data = [pd.read_csv(path, sep='[:;,]', engine='python') for path in paths]
+    temp_df = pd.read_csv(path, sep=seperators)
+    excel_data = [temp_df[x].values.tolist() for x in temp_df]
 
     return excel_data
 
@@ -365,13 +396,15 @@ def peak_find(data_sets, tolerance=None, lims=None):
             prom = 0
             if tolerance != None:
                 prom = max * tolerance
-            peak, _ = find_peaks(data_sets_child, prominence=prom)#, height=params[0], threshold=params[1])
+            peak, _ = find_peaks(data_sets_child, prominence=prom)
             temp.append(peak)
         peaks_data.append(temp)
 
     return peaks_data
 
-def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0, axis_lbls=None, sec_axis=True, save=False, data_labels=None, lims=None, woi=None):
+def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0,
+            axis_lbls=None, sec_axis=True, save=False, 
+            data_labels=None, lims=None, woi=None, res=80):
     """
     zoom in on a particular area of interest in a dataset
 
@@ -398,7 +431,8 @@ def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0, axis_lbls=N
             ax.set_title('Halfwave Plate: ' + key)
             ax.set(xlabel=axis_lbls[0], ylabel=axis_lbls[1])
         if sec_axis == True:
-            sec_ax = ax.secondary_xaxis('top', functions= (lambda x: 1e7 / x, lambda x: 1e7 / x))
+            sec_ax = ax.secondary_xaxis('top', functions=
+                                        (lambda x: 1e7/x, lambda x: 1e7/x))
             sec_ax.set_xlabel('Wavenumber (cm$^{-1}$)')
         if woi != None:
             for  vline in woi:
@@ -416,20 +450,25 @@ def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0, axis_lbls=N
                 lower, upper = zoom(x, lims)
             if data_labels != None:
                 data_lbl = os.path.split(data_labels[n])[1]
-            ax.plot(x[lower:upper], y[lower:upper], color=colour[n], linestyle='-', linewidth=0.8, alpha=1, label=data_lbl)
+            ax.plot(x[lower:upper], y[lower:upper], color=colour[n], 
+                    linestyle='-', linewidth=0.8, alpha=1, label=data_lbl)
             if data_indexes != None:
-                data_index = [i for i in data_indexes[m][n] if i >= lower and i <= upper]
-                ax.plot(x[data_index], y[data_index], marker='x', color=colour[n], linestyle='None', alpha=1, label='_nolegend_')
+                data_index = [i for i in data_indexes[m][n]
+                              if i >= lower and i <= upper]
+                ax.plot(x[data_index], y[data_index], marker='x',
+                        color=colour[n], linestyle='None', alpha=1,
+                        label='_nolegend_')
             shift += shifter
 
         ax.legend(loc='best', fontsize=8)   
 
         if save == True:
             folder = os.path.split(data_labels[0])[0]
-            region = str(round(x[lower])) + '_' + str(round(x[upper])) + '_' + key
+            region = str(round(x[lower])) + '_' + str(round(x[upper])) 
+            + '_' + key
             name = folder + '\\' + region + '.png'
 
-            fig.savefig(fname=name, dpi=80, format='png', bbox_inches='tight')
+            fig.savefig(fname=name, dpi=res, format='png', bbox_inches='tight')
     
 def read_files(folder_list, file_list):
     """
