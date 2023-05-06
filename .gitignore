@@ -2,6 +2,9 @@
 cavity_spectrum.ipynb
 lscan_transmission.ipynb
 lscan_transmission.py
+class_test.py
+AOM characterisation.py
+test.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__

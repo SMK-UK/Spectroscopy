@@ -200,7 +200,7 @@ def df_average(data_frames: list):
     return averaged_data
 
 def dir_interogate(path: str, extensions: tuple[str] or list[str], 
-                   exceptions: tuple[str] or list[str]):
+                   exceptions: tuple[str] or list[str] =None, folders: tuple[str]=None):
     """
     Interogate directory and extract all folders and files with 
     the specified extensions
@@ -219,6 +219,7 @@ def dir_interogate(path: str, extensions: tuple[str] or list[str],
     file_list : list of file names
 
     """
+    save_files = False
     folder_list = []
     file_list = []
     # holder removes parent folder from lists
@@ -226,24 +227,32 @@ def dir_interogate(path: str, extensions: tuple[str] or list[str],
     # walk through directory and extract all relevant files
     for root, dirs, files in natsorted(os.walk(path)):
         if holder == 1:
-            if any([x in root for x in exceptions]):
-                continue
-            else:
+            if folders == None:
                 # populate folder list
                 folder_list.append(root)
+                save_files = True
+            elif(root.endswith(folders)):
+                # populate selected folder list
+                folder_list.append(root)
+                save_files = True
             temp = []
-            for file in files:
-                # check for file extension
-                if(file.endswith(extensions)):
-                    # ignore collection data notes
-                    if any([x in file for x in exceptions]):
-                        continue
-                    else:
-                        # populate file list
-                        temp.append(file)
-            file_list.append(temp)
+            if save_files == True:
+                for file in natsorted(files):
+                    # check for file extension
+                    if(file.endswith(extensions)):
+                        if exceptions == None:
+                            temp.append(file)
+                        elif any([x in file for x in exceptions]):
+                            continue
+                        else:
+                            temp.append(file)
+                file_list.append(temp)
+                save_files = False
         else:
             holder = 1
+
+    if len(file_list) == 1:
+        file_list = [file_name for sublist in file_list for file_name in sublist]
 
     return folder_list, file_list
 
@@ -364,6 +373,9 @@ def open_excel(path: str, seperators: str=','):
     temp_df = pd.read_csv(path, sep=seperators)
     excel_data = [temp_df[x].values.tolist() for x in temp_df]
 
+    if len(excel_data) == 1:
+        excel_data = [value for sublist in excel_data for value in sublist]
+
     return excel_data
 
 def peak_find(data_sets, tolerance=None, lims=None):
@@ -397,7 +409,7 @@ def peak_find(data_sets, tolerance=None, lims=None):
             if tolerance != None:
                 prom = max * tolerance
             peak, _ = find_peaks(data_sets_child, prominence=prom)
-            temp.append(peak)
+            temp.append(peak.tolist())
         peaks_data.append(temp)
 
     return peaks_data
@@ -418,7 +430,6 @@ def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0,
     -------
 
     start, stop : start and stop index for the zoomed data
-
     """
     data_lbl = None
     if keys == None:
@@ -440,8 +451,8 @@ def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0,
 
         shift = 0
         for n, x in enumerate(x_data[m]):
-            x = np.asarray(x)
-            y = np.asarray([value + shift for value in y_data[m][n]])
+            x = np.array(x)
+            y = np.array([value + shift for value in y_data[m][n]])
             colour = mp.cm.viridis(np.linspace(0, 1, len(x_data[m])))
             if lims == None:
                 lower = 0
@@ -453,8 +464,8 @@ def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0,
             ax.plot(x[lower:upper], y[lower:upper], color=colour[n], 
                     linestyle='-', linewidth=0.8, alpha=1, label=data_lbl)
             if data_indexes != None:
-                data_index = [i for i in data_indexes[m][n]
-                              if i >= lower and i <= upper]
+                data_index = np.array([i for i in data_indexes[m][n]
+                              if i >= lower and i <= upper])
                 ax.plot(x[data_index], y[data_index], marker='x',
                         color=colour[n], linestyle='None', alpha=1,
                         label='_nolegend_')
@@ -464,9 +475,9 @@ def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0,
 
         if save == True:
             folder = os.path.split(data_labels[0])[0]
-            region = str(round(x[lower])) + '_' + str(round(x[upper])) 
+            region = str(round(x[lower])) + '_' + str(round(x[upper])) \
             + '_' + key
-            name = folder + '\\' + region + '.png'
+            name = os.path.join(folder, region + '.png')
 
             fig.savefig(fname=name, dpi=res, format='png', bbox_inches='tight')
     
@@ -484,7 +495,6 @@ def read_files(folder_list, file_list):
     -------
 
     path : file path name
-    
     """
     path = []
     for index, folder in enumerate(folder_list):
@@ -507,7 +517,6 @@ def search_paths(paths, keys):
     -------
 
     key_paths : list of requested path names
-
     """
     key_paths = []
     excluded_paths = []
@@ -518,8 +527,8 @@ def search_paths(paths, keys):
             excluded_paths.append(path)
 
     return key_paths, excluded_paths
-    
-def smooth_data(data_sets, sigma):
+
+def smooth_data(data_set_parent, sigma):
     """
     Perform smoothing of the data using gaussian filter 
     TODO include other smoothing operations
@@ -527,7 +536,7 @@ def smooth_data(data_sets, sigma):
     Parameters
     ----------
 
-    data_sets : 2D data array / list to perform shift on
+    data_set_parent : 2D data array / list to perform shift on
     sigma : smoothing parameter
 
     Returns
@@ -535,12 +544,7 @@ def smooth_data(data_sets, sigma):
 
     smoothed_sets : list of smoothed data
     """
-    smoothed_sets = []
-    for index in range(len(data_sets)):
-        temp = []
-        for data_set in data_sets[index]:
-            temp.append(gaussian_filter(data_set, sigma))
-        smoothed_sets.append(temp)
+    smoothed_sets = [[gaussian_filter(data, sigma) for data in data_set_child] for data_set_child in data_set_parent]
 
     return smoothed_sets
 
@@ -580,7 +584,6 @@ def zoom(data, bounds):
     -------
 
     start, stop : start and stop index for the zoomed data
-
     """
     for index, value in enumerate(data):
         if value <= bounds[0]:
@@ -589,3 +592,40 @@ def zoom(data, bounds):
             stop = index
 
     return start, stop
+
+def peak_freq(peaks_parent:list[list[list[int]]],
+              wavelength_parent:list[list[list[int]]],
+              lims=None):
+    """
+    convert a series of wavelength values to frequency 
+    based on given list of indexes
+
+    Parameters
+    ----------
+
+    peaks_parent : list / array containing index of wavelength
+    values to convert
+    lims : list|tuple - lower and upper bounds of interest wavelengths
+
+    Returns
+    -------
+
+    frequencies : list of frequency values
+    """
+    frequencies = []
+
+    for m, peaks_child in enumerate(peaks_parent):
+        frequency_subset = []
+        for n, peak_subset in enumerate(peaks_child):
+            if lims == None:
+                lower = 0
+                upper = -1
+            else:
+                lower, upper = zoom(wavelength_parent[m][n], lims)
+            frequency_subset.append([299792458/wavelength_parent[m][n][i] for i in peak_subset if i >= lower and i <= upper])
+        frequencies.append(frequency_subset)
+
+    if len(frequencies) == 1:
+        frequencies = [frequency for sublist in frequencies for frequency in sublist]
+        
+    return frequencies
