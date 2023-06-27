@@ -1,5 +1,11 @@
 '''
 Specific functions for handling spectroscopy data and analysing
+
+TO DO:
+
+convert this to a general class
+update plotter to take strings in order to change colours
+
 '''
 from math import log
 import matplotlib.pyplot as mp
@@ -7,9 +13,87 @@ from natsort import natsorted
 import numpy as np
 import os, re
 import pandas as pd
-from scipy.ndimage import gaussian_filter
-from scipy.fftpack import fft, fftfreq
+from scipy.fftpack import ifft, fft, fftfreq
 from scipy.signal import find_peaks
+
+c = 299792458
+
+# TODO incorporate numpy arrays and conditionals to deal with numpy arrays
+# in functions
+
+def bin_data(data: list[float], N: int = 10):
+    """
+    Bin list of data and return mean
+    
+    Parameters
+    ----------
+
+    data : list of data to bin
+
+    Returns
+    -------
+
+    mean : mean value of data in longest bin
+    """
+    bin_width = (max(data) - min(data)) / N
+    minimum = min(data)
+    edge = minimum + bin_width
+    binned = [[x for x in data if x > (edge * i) and 
+                x < (edge * (i + 1))] for i in range(N)]
+
+    return sum(find_longest(binned)[0]) / find_longest(binned)[1]
+
+def converter(data: list[float]|float, d_type:int=1, 
+              c_type:int = 0, scale:float = 1):
+    """
+    Convert list or single value from wavelength, frequency 
+    or wavenumber to another.
+    
+    Parameters
+    ----------
+
+    data : list of lists
+    d_type : Input data type
+    0: wavenumber
+    1: frequency
+    2: wavelength
+    c_type : Output data type
+    0: wavenumber
+    1: frequency
+    2: wavelength
+    scale : scaling factor
+
+    Returns
+    -------
+
+    converted : list of converted values
+    """
+    if type(data) == float or int:
+        convert = [data]
+    else:
+        convert = data
+        
+    converted = []
+    wavelengths = []
+
+    if d_type == 0:
+        wavelengths = [1E7 / (value*scale) for value in convert]
+    elif d_type == 1:
+        wavelengths = [c / (value*scale) for value in convert]
+    elif d_type == 2:
+        wavelengths = convert
+
+    if c_type == 0:
+        converted = [1E7 / (wavelength) for wavelength in wavelengths]
+    elif c_type == 1:
+        converted = [c / (wavelength) for wavelength in wavelengths]
+    elif c_type == 2:
+        converted = wavelengths
+
+    if len(converted) == 1:
+        converted = converted[0]
+    
+    return converted
 
 def check_len(data_lists: list[list]):
     """
@@ -71,11 +155,11 @@ def check_str(input_string: str):
 
     return logical
 
-def data_extract(paths: list[str], keys: list[str]=None, tail: int=1, 
+def data_extract(paths: list[str], keys: list[str]=[], tail: int=1, 
                 include: bool=True):
     """
-    search a given path or list of paths for strings and extract the data from
-    selected files depending on the discriminator (keys)
+    search a given path or list of paths for strings and extract the data
+    from selected files depending on the discriminator (keys)
 
     Parameters
     ----------
@@ -94,7 +178,7 @@ def data_extract(paths: list[str], keys: list[str]=None, tail: int=1,
     """
     extracted_data = []
     extracted_metadata = []
-    if keys != None:
+    if keys:
         for key in keys:
             extracted_data_children = []
             extracted_metadata_children = []
@@ -122,7 +206,7 @@ def data_extract(paths: list[str], keys: list[str]=None, tail: int=1,
 
     return extracted_data, extracted_metadata
 
-def data_fft(times: list[list[int]], amplitudes: list[list[int]]):
+def data_fft(time: list[float], amplitude: list[float]):
     """
     Perform FFT calculation for amplitude component and generate the frequency
     from times.
@@ -130,8 +214,8 @@ def data_fft(times: list[list[int]], amplitudes: list[list[int]]):
     Parameters
     ----------
 
-    times : 2D data array / list to use as reference
-    amplitudes : 2D data array / list of transmission data
+    time : 1D data array / list to use as reference
+    amplitude : 1D data array / list of transmission data
 
     Returns
     -------
@@ -139,23 +223,14 @@ def data_fft(times: list[list[int]], amplitudes: list[list[int]]):
     frequencies : list of frequency values from input time data
     ffts : list of fft calculated from input amplitude data
     """
-    frequencies = []
-    ffts = []
-    for index in range(len(times)):
-        temp_freq = []
-        temp_fft = []
-        # perform correction on the reference data and then calculate the OD
-        for time_child in times[index]:
-            N = len(time_child)
-            T = time_child[1] - time_child[0]
-            temp_fft.append(np.sqrt(np.abs(fft(amplitudes[index]))))
-            temp_freq.append(fftfreq(N, T))
-        ffts.append(temp_fft)
-        frequencies.append(temp_freq)
+    N = len(time)
+    T = time[1] - time[0]
+    fftd = rfft(amplitude)
+    frequencies = fftfreq(N, T)
 
-    return frequencies, ffts
+    return frequencies, fftd
 
-def data_shift(data_sets: list[list[list[int]]], shift: int):
+def data_shift(data_sets: list[list[list[int]]], shift: int|float):
     """
     Perform a shift for each value in a list of data
 
@@ -170,11 +245,9 @@ def data_shift(data_sets: list[list[list[int]]], shift: int):
 
     shifted_sets : list of shifted data 
     """
-    shifted_sets = [[[value + shift for value in data_set_child]
+    return [[[value + shift for value in data_set_child]
                     for data_set_child in data_sets[index]] for 
                     index in range(len(data_sets))]
-
-    return shifted_sets
 
 def df_average(data_frames: list):
     """
@@ -195,12 +268,12 @@ def df_average(data_frames: list):
     summed = 0
     for data_frames_child in data_frames:
         summed += data_frames_child
-    averaged_data = summed / len(data_frames)
 
-    return averaged_data
+    return summed / len(data_frames)
 
-def dir_interogate(path: str, extensions: tuple[str] or list[str], 
-                   exceptions: tuple[str] or list[str] =None, folders: tuple[str]=None):
+def dir_interogate(path: str, extensions: tuple[str,...] = (), 
+                   exceptions: tuple[str,...] = (), 
+                   folders: tuple[str,...] = ()):
     """
     Interogate directory and extract all folders and files with 
     the specified extensions
@@ -211,6 +284,7 @@ def dir_interogate(path: str, extensions: tuple[str] or list[str],
     path : string - main folder / directory to interrogate
     exts : tuple / list - file extensions to check for in directory
     exceptions : tuple / list - file extensions / strings to exclude
+    folders : list - selected folders to extract from
 
     Returns
     -------
@@ -219,50 +293,48 @@ def dir_interogate(path: str, extensions: tuple[str] or list[str],
     file_list : list of file names
 
     """
-    save_files = False
     folder_list = []
     file_list = []
-    # holder removes parent folder from lists
-    holder = 0
-    # walk through directory and extract all relevant files
+
     for root, dirs, files in natsorted(os.walk(path)):
-        if holder == 1:
-            if folders == None:
-                # populate folder list
-                folder_list.append(root)
-                save_files = True
-            elif(root.endswith(folders)):
-                # populate selected folder list
-                folder_list.append(root)
-                save_files = True
-            temp = []
-            if save_files == True:
-                for file in natsorted(files):
-                    # check for file extension
-                    if(file.endswith(extensions)):
-                        if exceptions == None:
-                            temp.append(file)
-                        elif any([x in file for x in exceptions]):
-                            continue
-                        else:
-                            temp.append(file)
-                file_list.append(temp)
-                save_files = False
-        else:
-            holder = 1
+        if dirs:
+            if not folders:
+                folder_list = dirs
+            else:
+                print(dirs)
+                folder_list = [folder for folder in dirs 
+                               if folder in folders]
+            if exceptions:
+                folder_list = [folder for folder in folder_list
+                               if not any([x in folder for x in exceptions])]
+
+        if not dirs:
+            temp_files = []
+            if not folders:
+                temp_files = files
+            elif any([x in os.path.split(root) for x in folders]):
+                temp_files = files
+            if exceptions:
+                temp_files = [file for file in temp_files
+                              if not any([x in file for x in exceptions])]
+            if extensions:
+                temp_files = [file for file in temp_files
+                              if file.endswith(extensions)]
+            if temp_files:
+                file_list.append(temp_files)
 
     if len(file_list) == 1:
-        file_list = [file_name for sublist in file_list for file_name in sublist]
+        file_list = [file_name for sublist in file_list
+                     for file_name in sublist]
 
-    return folder_list, file_list
+    return natsorted(folder_list), file_list
 
-def excel_extract(folder_names: list[str], file_names: list[list[str]], average: bool=False):
+def excel_extract(folder_names: list[str], file_names: list[list[str]],
+                  average: bool=False):
 
-    extracted_excel = [[open_excel(os.path.join(folder, file)) for file in file_names[index]] for index, folder in enumerate(folder_names)]
+    return [[open_excel(os.path.join(folder, file)) for file in file_names[index]] for index, folder in enumerate(folder_names)]
 
-    return extracted_excel
-
-def find_numbers(paths: list[str], tail: int=1):
+def find_numbers(strings: list[str], tail: int=1):
     """
     Checks string for numbers
     
@@ -278,13 +350,52 @@ def find_numbers(paths: list[str], tail: int=1):
     """
     # will return combined values i.e. 187 will be returned '187' and not
     #'1', '8', '7'
-    numbers = [re.findall('\d+', os.path.split(path)[tail])[0]
-               for path in paths]
     
-    return numbers
+    return [re.findall('\d+', os.path.split(string)[tail])[0]
+               for string in strings]
 
-def OD_calc(ref_data: list[list[int]], trans_data: list[list[int]],
-            correction: bool=True, c_factor: int=1):
+def find_OD(y_values:list[float], peaks:list[int], lims:tuple=()):
+    """
+    Find OD of peak data
+    
+    Parameters
+    ----------
+
+    data : list of data to extract OD from
+    peaks : list of peak values in data
+    N : number of bins 
+
+    Returns
+    -------
+
+    OD : OD value at peak
+    """
+
+    return [y_values[index] for index in peaks if index >= lims[0] and index <= lims[1]]
+
+def find_longest(data_list: list[list[float]]):
+    """
+    Find longest list and length within a lst
+    
+    Parameters
+    ----------
+
+    data_list : list of data
+
+    Returns
+    -------
+
+    longest : longest list
+    length : length of longest list
+    """
+    longest = max(data_list, key = lambda i: len(i))
+    length = max(map(len, data_list))
+
+    return longest, length
+
+def OD_calc(ref_data: list[list[list[list[float]]]], 
+            trans_data: list[list[list[list[float]]]],
+            correction: bool=True, c_factor: float=1):
     """
     Perform OD calculation for transmission data and adjust the reference
     using the correction factor if neccesary
@@ -309,11 +420,13 @@ def OD_calc(ref_data: list[list[int]], trans_data: list[list[int]],
         temp_y = []
         # perform correction on the reference data and then calculate the OD
         for references in ref_data[index]:
+            reference = references[1]
             if correction == True:
-                reference = [x*c_factor for x in references[1]]
+                reference = [x*c_factor for x in reference]
             for transmission in trans_data[index]:
                 temp_x.append(transmission[0])
-                temp_y.append([log(a / b) for a, b in zip(reference, transmission[1])])
+                temp_y.append([log(a / b) for a, b 
+                               in zip(reference, transmission[1])])
             x.append(temp_x)
             y.append(temp_y)
 
@@ -321,7 +434,9 @@ def OD_calc(ref_data: list[list[int]], trans_data: list[list[int]],
 
 def open_data(path: str):
     """
-    Open a given file and read the first two columns to a list
+    Open a given file and read the first two columns to a list. Works with
+    columns of different length
+
     Parameters
     ----------
     path : file path
@@ -340,19 +455,25 @@ def open_data(path: str):
             # check for numerical data
             if check_str(row) == True:
                 # generate list to populate with column data
-                data_temp = [i for i in re.split(r"[\t|,|;]", row) if i != '']
+                data_temp = [i for i in re.split(r"[\t|,|;]", row)
+                             if i != '' and i != '\r\n']
                 if data_list == 0:
                     data_list = [[] for _ in range(len(data_temp))]
                 for index, data in enumerate(data_temp):
+                    if len(data_list) < index + 1:
+                        data_list.append([])
                     data_list[index].append((float(data)))
             else:
                 # extract metadata
-                metadata_temp = [i for i in re.split(r"[\t|,|;]", row) if i != '']
+                metadata_temp = [i for i in re.split(r"[\t|,|;]", row)
+                                 if i != '' and i != '\r\n']
                 if metadata_list == 0:
                     # generate list to populate with column metadata
                     metadata_list = [[] for _ in range(len(metadata_temp))]
                 for index, metadata in enumerate(metadata_temp):
-                    metadata_list[index].append((metadata))
+                    if len(metadata_list) < index + 1:
+                        metadata_list.append([])
+                    metadata_list[index].append(metadata)
         raw_file.close()
 
     return data_list, metadata_list
@@ -378,7 +499,9 @@ def open_excel(path: str, seperators: str=','):
 
     return excel_data
 
-def peak_find(data_sets, tolerance=None, lims=None):
+def peak_find(x_data_sets: list[list[list[int|float]]], 
+              y_data_sets: list[list[list[int|float]]], 
+              prom_tol=None, top_tol=None, lims=None):
     """
     Find peaks in data
 
@@ -394,29 +517,73 @@ def peak_find(data_sets, tolerance=None, lims=None):
     peaks_data : indexes of peaks for each data set
     """  
     peaks_data = []
+    lower = 0
+    upper = -1
+    prom = prom_tol
+    top = top_tol
 
-    for index in range(len(data_sets)):
+    for index in range(len(y_data_sets)):
         temp = []
-        for data_sets_child in data_sets[index]:
-            if lims == None:
-                lower = 0
-                upper = -1
-            else:
-                lower, upper = zoom(data_sets_child, lims)
-            max = np.amax(data_sets_child[lower:upper])
-            min = np.amin(data_sets_child[lower:upper])
-            prom = 0
-            if tolerance != None:
-                prom = max * tolerance
-            peak, _ = find_peaks(data_sets_child, prominence=prom)
-            temp.append(peak.tolist())
+        for x_data_sets_child, y_data_sets_child in zip(x_data_sets[index], 
+                                                        y_data_sets[index]):
+            if lims:              
+                lower, upper = zoom(x_data_sets_child, lims)
+            data_max = max(y_data_sets_child[lower:upper])
+            if prom_tol:
+                prom = prom_tol * data_max
+            if top_tol:
+                top = top_tol * data_max
+            peaks, _ = find_peaks(y_data_sets_child[lower:upper], 
+                                  height=top, prominence=prom)
+            temp.append([peak + lower for peak in peaks])
         peaks_data.append(temp)
 
     return peaks_data
 
-def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0,
+def peak_freq(peaks_parent:list[list[list[float]]],
+              wavelength_parent:list[list[list[float]]],
+              lims=None):
+    """
+    convert a series of wavelength values to frequency 
+    based on given list of indexes
+
+    Parameters
+    ----------
+
+    peaks_parent : list / array containing index of wavelength
+    values to convert
+    lims : list|tuple - lower and upper bounds of interest wavelengths
+
+    Returns
+    -------
+
+    frequencies : list of frequency values
+
+    TO DO: superfluous - use converter and change this to extract
+    x value for peaks
+    """
+    
+    frequencies = []
+
+    for m, peaks_child in enumerate(peaks_parent):
+        frequency_subset = []
+        for n, peak_subset in enumerate(peaks_child):
+            if lims:
+                lower, upper = zoom(wavelength_parent[m][n], lims)
+            else:
+                lower = 0
+                upper = len(wavelength_parent[m][n])
+            frequency_subset.append([c * 1 / wavelength_parent[m][n][i] for i in peak_subset if i >= lower and i <= upper])
+        frequencies.append(frequency_subset)
+
+    if len(frequencies) == 1:
+        frequencies = [frequency for sublist in frequencies for frequency in sublist]
+        
+    return frequencies
+
+def plotter(x_data, y_data, data_indexes=[], keys:list=[], shifter: int|float=0,
             axis_lbls=None, sec_axis=True, save=False, 
-            data_labels=None, lims=None, woi=None, res=80):
+            data_labels=[], lims:tuple=(), woi=None, res=80):
     """
     zoom in on a particular area of interest in a dataset
 
@@ -432,20 +599,22 @@ def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0,
     start, stop : start and stop index for the zoomed data
     """
     data_lbl = None
-    if keys == None:
-        keys = ['']
+    lower = 0
+    upper = -1
+    if not keys:
+        keys = []
 
     for m, key in enumerate(keys):
-        fig, ax = mp.subplots(figsize=(8, 5))
+        fig, ax = mp.subplots()
         ax.grid(True, color='silver', linewidth=0.5)
-        if axis_lbls != None:
+        if axis_lbls:
             ax.set_title('Halfwave Plate: ' + key)
             ax.set(xlabel=axis_lbls[0], ylabel=axis_lbls[1])
-        if sec_axis == True:
+        if sec_axis:
             sec_ax = ax.secondary_xaxis('top', functions=
                                         (lambda x: 1e7/x, lambda x: 1e7/x))
             sec_ax.set_xlabel('Wavenumber (cm$^{-1}$)')
-        if woi != None:
+        if woi:
             for  vline in woi:
                 ax.axvline(x=vline, linestyle='-.')
 
@@ -453,27 +622,26 @@ def plotter(x_data, y_data, data_indexes=None, keys=None, shifter=0,
         for n, x in enumerate(x_data[m]):
             x = np.array(x)
             y = np.array([value + shift for value in y_data[m][n]])
-            colour = mp.cm.viridis(np.linspace(0, 1, len(x_data[m])))
-            if lims == None:
-                lower = 0
-                upper = -1
-            else:
+            colour = mp.cm.winter(np.linspace(0, 1, len(x_data[m])))
+            if lims:
                 lower, upper = zoom(x, lims)
-            if data_labels != None:
+            if data_labels:
                 data_lbl = os.path.split(data_labels[n])[1]
-            ax.plot(x[lower:upper], y[lower:upper], color=colour[n], 
+            ax.plot(x[lower:upper], y[lower:upper], color=colour[n],
                     linestyle='-', linewidth=0.8, alpha=1, label=data_lbl)
-            if data_indexes != None:
+            if data_indexes:
                 data_index = np.array([i for i in data_indexes[m][n]
-                              if i >= lower and i <= upper])
-                ax.plot(x[data_index], y[data_index], marker='x',
-                        color=colour[n], linestyle='None', alpha=1,
-                        label='_nolegend_')
+                            if i >= lower and i <= upper])
+                if data_index.size > 0:
+                    ax.plot(x[data_index], y[data_index], marker='x',
+                            color=colour[n], linestyle='None', alpha=1,
+                            label='_nolegend_')
             shift += shifter
 
-        ax.legend(loc='best', fontsize=8)   
+        ax.legend(loc='best', fontsize=8)
+        fig.tight_layout()
 
-        if save == True:
+        if save:
             folder = os.path.split(data_labels[0])[0]
             region = str(round(x[lower])) + '_' + str(round(x[upper])) \
             + '_' + key
@@ -499,7 +667,7 @@ def read_files(folder_list, file_list):
     path = []
     for index, folder in enumerate(folder_list):
         for file in file_list[index]:
-            path.append(os.path.join(folder, file))
+           path.append(os.path.join(folder, file))
     
     return path
 
@@ -528,10 +696,8 @@ def search_paths(paths, keys):
 
     return key_paths, excluded_paths
 
-def smooth_data(data_set_parent, sigma):
+def process_data(data_set:list[float], ):
     """
-    Perform smoothing of the data using gaussian filter 
-    TODO include other smoothing operations
 
     Parameters
     ----------
@@ -544,7 +710,7 @@ def smooth_data(data_set_parent, sigma):
 
     smoothed_sets : list of smoothed data
     """
-    smoothed_sets = [[gaussian_filter(data, sigma) for data in data_set_child] for data_set_child in data_set_parent]
+    smoothed_sets = [gaussian_filter(data, sigma) for data in data_set]
 
     return smoothed_sets
 
@@ -570,7 +736,30 @@ def split_lists(data_sets):
 
     return data_lists
 
-def zoom(data, bounds):
+def truncate(data:list[float], lims:tuple):
+    """
+    truncate data to remove superfluos data
+
+    Parameters
+    ----------
+
+    data : list / array - data to perform zoom
+    bounds : tuple - lower and upper bounds of the region to truncate
+
+    Returns
+    -------
+
+    truncated data array
+    """
+    lower, upper = zoom(data, lims)
+
+    return np.array(data)[lower:upper]
+
+def zero_data(data:list[float]):
+
+    return [value + min(data) for value in data]
+
+def zoom(data:list[float], bounds:tuple=()):
     """
     zoom in on a particular area of interest in a dataset
 
@@ -585,6 +774,8 @@ def zoom(data, bounds):
 
     start, stop : start and stop index for the zoomed data
     """
+    start = 0
+    stop = -1
     for index, value in enumerate(data):
         if value <= bounds[0]:
             start = index
@@ -593,39 +784,22 @@ def zoom(data, bounds):
 
     return start, stop
 
-def peak_freq(peaks_parent:list[list[list[int]]],
-              wavelength_parent:list[list[list[int]]],
-              lims=None):
-    """
-    convert a series of wavelength values to frequency 
-    based on given list of indexes
+class ListCalc:
 
-    Parameters
-    ----------
+    def __init__(self, x_data:list[float], y_data:list[float]):
 
-    peaks_parent : list / array containing index of wavelength
-    values to convert
-    lims : list|tuple - lower and upper bounds of interest wavelengths
+        def addition(self):
 
-    Returns
-    -------
-
-    frequencies : list of frequency values
-    """
-    frequencies = []
-
-    for m, peaks_child in enumerate(peaks_parent):
-        frequency_subset = []
-        for n, peak_subset in enumerate(peaks_child):
-            if lims == None:
-                lower = 0
-                upper = -1
-            else:
-                lower, upper = zoom(wavelength_parent[m][n], lims)
-            frequency_subset.append([299792458/wavelength_parent[m][n][i] for i in peak_subset if i >= lower and i <= upper])
-        frequencies.append(frequency_subset)
-
-    if len(frequencies) == 1:
-        frequencies = [frequency for sublist in frequencies for frequency in sublist]
+            return [x+y for x, y in zip(x_data, y_data)]
         
-    return frequencies
+        def subtraction(self):
+
+            return [x-y for x, y in zip(x_data, y_data)]
+        
+        def mulitplication(self):
+
+            return [x*y for x, y in zip(x_data, y_data)]
+        
+        def division(self):
+        
+            return [x/y for x, y in zip(x_data, y_data)]

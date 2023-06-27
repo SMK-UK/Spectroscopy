@@ -4,33 +4,33 @@ Generic fitting functions
 
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.signal import fftconvolve
 
-def gaussian(x, amp, y_0, x_0, sigma):
+def blackman(N: int):
     """
-    Generates Gaussian with given parameters
-    
+    Generates blackman window
+
     Parameters
     ----------
 
-    x : 1D array 
-        Positional arguments for gaussian
-    amp : Single value
-        Maximum value of gaussian
-    y_0 : Single value
-        Y Offset
-    x_0 : Single value
-        Centre of Gaussian peak
-    sigma : Single value
-        Standard deviation of Gaussian
-
+    N : array_like
+        Length of window
+    
     Returns
     -------
 
-    1D array of height values for the positional arguments given in x
-    """
-    return amp * np.exp(-((x - x_0) ** 2) / (2 * sigma ** 2)) + y_0
+    out : 1-D array
+        y values as a function of x
 
-def fitgauss(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
+    """
+    if not N % 2:
+        N += 1
+
+    n = np.arange(N)
+
+    return 0.42 - 0.5 * np.cos(2*np.pi * n / (N-1)) + 0.08 * np.cos(4 * np.pi * n / (N-1))
+
+def fitgauss(x: list[float], amp: float, params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
     """
     Returns seperate x-y Gaussian parameters from fit to 2D gaussian data
     (height, centre_x, width_x, centre_y, width_y)
@@ -68,104 +68,8 @@ def fitgauss(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
     fit_err = np.sqrt(np.diag(success))
 
     return fit, fit_err
-
-def lorentzian(x, amp, y_0, x_0, gamma):
-    """
-    Generates Lorentzian function with given parameters.
-
-    Parameters
-    ----------
-
-    x : array_like
-        Input range of frequencies
-    amp : single value
-        Height of peak
-    y_0 : Single value
-        Y offset
-    x_0 : single value
-        Central frequency of Lorentzian
-    gamma : single value
-        FWHM of Lorentzian
-    
-    Returns
-    -------
-
-    out : 1-D array
-        Output amplitudes as function of x
-
-    """
-    return (amp * ((0.5*gamma)**2/((x-x_0)**2 + (0.5*gamma)**2))) + y_0
             
-def fitlorentz(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to a Lorentzian function
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    amp : 1D array
-        Amplitude values corresponding to x values
-    params : 1D array, optional
-        Guess values for Lorentzian function; amp, amp_0, x_0, gamma
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
-    """
-    fit, success = curve_fit(lorentzian, x, amp, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
-
-def pseudo_voigt(x, y_0, amp_g, x_0g, sigma, amp_l, x_0l, gamma, eta):
-    """
-    Generates Pseudo Voigt profile with given parameters using GLS method.
-
-    Parameters
-    ----------
-
-    x : array_like
-        Input range of frequencies
-    y_0 : single value
-        Profile Y offset
-    amp_g : single value
-        Amplitude of Gaussian component
-    x_0g : single value
-        Central frequency of Gaussian
-    sigma : single value
-        Standard deviation of Gaussian
-    amp_l : single value
-        Amplitude of Lorentzian component
-    x_0l : single value
-        Central frequency of Lorentzian
-    Gamma : 
-        FWHM of Lorentzian
-    Eta : Single Value
-        Weighting factor of Gaussian to Lorentzian
-
-    Returns
-    -------
-
-    out : 1-D array
-        Output amplitudes as function of x
-
-    """
-    return (eta * amp_g * (np.exp(-((x - x_0g) ** 2) / (2 * sigma ** 2)))) + ((1-eta) * amp_l * ((0.5*gamma)**2/((x-x_0l)**2 + (0.5*gamma)**2))) + y_0
-
-def fitgls(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
+def fitgls(x:list[float], amp:float, params=None, meth=None, lims=(-np.inf, np.inf)):
     """
     Fits data to a Voigt profile using the GLS method
     
@@ -199,30 +103,75 @@ def fitgls(x, amp, params=None, meth=None, lims=(-np.inf, np.inf)):
 
     return fit, fit_err
 
-def straight(x, a, b):
+def fitlorentz(x:list[float], y:list[float], params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
     """
-    Generates straight line function with given parameters.
-
+    Fits data to a Lorentzian function
+    
     Parameters
     ----------
 
-    x : array_like
-        Input range of x values
-    a : single value
-        gradient or slope of line
-    b : single value
-        Y-interecept value
-    
+    x : 1D array 
+        x values of orginal data
+    y : 1D array
+        Amplitude values corresponding to x values
+    params : 1D array, optional
+        Guess values for Lorentzian function; amp_0, x_0, gamma
+    meth : Single string {'lm', 'trf', 'dogbox'}, optional
+        Method to use for optimisation. See 
+        scipy.optimize.curve_fit for details
+    bounds : 2-tuple of array_like, optional
+        Lower and upper bounds on parameters. Defaults to 
+        no bounds. 
+        See scipy.optimize.curve_fit for details
+
     Returns
     -------
 
-    out : 1-D array
-        y values as a function of x
-
+    fit : 1D array
+        Fitted variables
+    fit_err : 1D array
+        Uncertainty in fitted variables
     """
-    return (a*x + b)
+    fit, success = curve_fit(lorentzian, x, y, p0=params, method=meth, bounds=lims)
+    fit_err = np.sqrt(np.diag(success))
 
-def fitstraight(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
+    return fit, fit_err
+
+def fitNgauss(x:list[float], y:list[float], params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
+    """
+    Fits data to a collection of Gaussians
+    
+    Parameters
+    ----------
+
+    x : 1D array 
+        x values of orginal data
+    y : 1D array
+        y values corresponding to x values
+    params : 1D array, optional
+        Guess values for gaussians in list: amp, y_0, x_0, sigma
+    meth : Single string {'lm', 'trf', 'dogbox'}, optional
+        Method to use for optimisation. See 
+        scipy.optimize.curve_fit for details
+    bounds : 2-tuple of array_like, optional
+        Lower and upper bounds on parameters. Defaults to 
+        no bounds. 
+        See scipy.optimize.curve_fit for details
+
+    Returns
+    -------
+
+    fit : 1D array
+        Fitted variables
+    fit_err : 1D array
+        Uncertainty in fitted variables
+    """
+    fit, success = curve_fit(N_gaussian, x, y, p0=params, method=meth, bounds=lims)
+    fit_err = np.sqrt(np.diag(success))
+
+    return fit, fit_err
+
+def fitstraight(x:list[float], y:list[float], params=None, meth=None, lims=(-np.inf, np.inf)):
     """
     Fits data to a straight line function
     
@@ -257,6 +206,288 @@ def fitstraight(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
 
     return fit, fit_err
 
+def gaussian(x:list[float], amp:float, y_0:float, x_0:float, sigma:float):
+    """
+    Generates Gaussian with given parameters
+    
+    Parameters
+    ----------
 
+    x : 1D array 
+        Positional arguments for gaussian
+    amp : Single value
+        Maximum value of gaussian
+    y_0 : Single value
+        Y Offset
+    x_0 : Single value
+        Centre of Gaussian peak
+    sigma : Single value
+        Standard deviation of Gaussian
 
+    Returns
+    -------
 
+    1D array of height values for the positional arguments given in x
+    """
+    return amp * np.exp(-((x - x_0) ** 2) / (2 * sigma ** 2)) + y_0
+
+def lorentzian(x:list[float], amp:float, y_0:float, x_0:float, gamma:float):
+    """
+    Generates Lorentzian function with given parameters.
+
+    Parameters
+    ----------
+
+    x : array_like
+        Input range of frequencies
+    amp : single value
+        Height of peak
+    y_0 : Single value
+        Y offset
+    x_0 : single value
+        Central frequency of Lorentzian
+    gamma : single value
+        FWHM of Lorentzian
+    
+    Returns
+    -------
+
+    out : 1-D array
+        Output amplitudes as function of x
+
+    """
+    return (amp * ((0.5*gamma)**2/((x-x_0)**2 + (0.5*gamma)**2))) + y_0
+
+def moving_av(N, type:str='square'):
+    """
+    Generates moving average window of type
+
+    Parameters
+    ----------
+
+    N : array_like
+        Length of window
+    type : string
+        Type of window to use:
+        Square
+        Gaussian
+        Blackman
+    
+    Returns
+    -------
+
+    out : 1-D array
+        y values as a function of x
+
+    """
+    if type == 'square':
+        window = np.ones(N)
+    if type == 'gaussian':
+        window = gaussian(np.arange(N), 1, 0, N/2, (N-1)/5)
+    if type == 'blackman':
+        window = blackman(N)
+
+    return window / np.sum(window)
+
+def N_gaussian(x:list[float], *params):
+    """
+    Generates sum of N Gaussians with given parameters
+    
+    Parameters
+    ----------
+
+    x : 1D array 
+        Positional arguments for Gaussian
+        
+    params : list of values containing (in order) 
+
+    amp : Single value
+        Maximum value of gaussian
+    y_0 : Single value
+        Y Offset
+    x_0 : Single value
+        Centre of Gaussian peak
+    sigma : Single value
+        Standard deviation of Gaussian
+
+    Returns
+    -------
+
+    1D array of height values for the positional arguments given in x
+    """
+    assert len(params) % 4 == 0, 'params must be a multiple of 4'
+    y = np.zeros_like(x)
+    for i in range(0, len(params), 4):
+        y = y + gaussian(x, params[i], params[i+1], params[i+2], params[i+3])
+
+    return y
+
+def pseudo_voigt(x:list[float], y_0:float, amp_g:float, x_0g:float,
+                sigma:float, amp_l:float, x_0l:float, gamma:float, eta:float):
+    """
+    Generates Pseudo Voigt profile with given parameters using GLS method.
+
+    Parameters
+    ----------
+
+    x : array_like
+        Input range of frequencies
+    y_0 : single value
+        Profile Y offset
+    amp_g : single value
+        Amplitude of Gaussian component
+    x_0g : single value
+        Central frequency of Gaussian
+    sigma : single value
+        Standard deviation of Gaussian
+    amp_l : single value
+        Amplitude of Lorentzian component
+    x_0l : single value
+        Central frequency of Lorentzian
+    Gamma : 
+        FWHM of Lorentzian
+    Eta : Single Value
+        Weighting factor of Gaussian to Lorentzian
+
+    Returns
+    -------
+
+    out : 1-D array
+        Output amplitudes as function of x
+
+    """
+    pv = (eta * amp_g * (np.exp(-((x - x_0g) ** 2) / (2 * sigma ** 2)))) + ((1-eta)
+        * amp_l * ((0.5*gamma)**2/((x-x_0l)**2 + (0.5*gamma)**2))) + y_0
+
+    return pv
+
+def sinc_filter(N, fc):
+    """
+    Generates sinc filter with length N and frequency fc
+
+    Parameters
+    ----------
+
+    N : array_like
+        Length of filter
+    fc : single value
+        frequency
+
+    Returns
+    -------
+
+    out : 1-D array
+        y values as a function of x
+
+    """
+    if not N % 2:
+        N += 1
+
+    n = np.arange(N)
+
+    return np.sinc(2 * fc * (n - (N-1)/2))
+
+def straight(x, a, b):
+    """
+    Generates straight line function with given parameters.
+
+    Parameters
+    ----------
+
+    x : array_like
+        Input range of x values
+    a : single value
+        gradient or slope of line
+    b : single value
+        Y-interecept value
+    
+    Returns
+    -------
+
+    out : 1-D array
+        y values as a function of x
+
+    """
+    return [a*value + b for value in x]
+
+def low_pass(N, fc):
+    """
+    Generates low-pass windowed since for filtering data above the cut-off
+    frequency.
+
+    Parameters
+    ----------
+
+    N : array_like
+        Length of filter
+    fc : single value
+        frequency cut-off
+    
+    Returns
+    -------
+
+    out : 1-D array
+        y values as a function of x
+
+    """
+    if not N % 2:
+        N += 1
+
+    low_pass = blackman(N) * sinc_filter(N, fc)
+
+    return low_pass / np.sum(low_pass)
+
+def high_pass(N, fc):
+    """
+    Generates high-pass windowed sinc for filtering data below the cut-off
+    frequency.
+
+    Parameters
+    ----------
+
+    N : array_like
+        Length of filter
+    fc : single value
+        frequency cut-off
+    
+    Returns
+    -------
+
+    out : 1-D array
+        y values as a function of x
+
+    """
+    if not N % 2:
+        N += 1
+
+    high_pass =  blackman(N) * sinc_filter(N, fc)
+    high_pass = high_pass / np.sum(high_pass)
+    high_pass = -high_pass
+    high_pass[(N-1)//2] += 1
+
+    return high_pass
+
+def band_pass(N_low, low, N_high, high):
+    """
+    Generates band-pass windowed sinc for filtering data.
+
+    Parameters
+    ----------
+
+    N_low : array_like
+        Length of filter
+    fc : single value
+        frequency cut-off
+    
+    Returns
+    -------
+
+    out : 1-D array
+        y values as a function of x
+
+    """
+
+    bpf = fftconvolve(low_pass(N_low, low), high_pass(N_high, high))
+    bpf = bpf / np.sum(bpf)
+
+    return bpf
