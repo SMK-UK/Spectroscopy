@@ -14,7 +14,7 @@ import numpy as np
 import os, re
 import pandas as pd
 from scipy.fftpack import ifft, fft, fftfreq
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, fftconvolve
 
 c = 299792458
 
@@ -225,7 +225,7 @@ def data_fft(time: list[float], amplitude: list[float]):
     """
     N = len(time)
     T = time[1] - time[0]
-    fftd = rfft(amplitude)
+    fftd = fft(amplitude)
     frequencies = fftfreq(N, T)
 
     return frequencies, fftd
@@ -333,6 +333,41 @@ def excel_extract(folder_names: list[str], file_names: list[list[str]],
                   average: bool=False):
 
     return [[open_excel(os.path.join(folder, file)) for file in file_names[index]] for index, folder in enumerate(folder_names)]
+
+def find_trigger(data, threshold, edge: int = 0):
+    """
+    Find rising or falling edge of a trigger signal
+
+    Parameters
+    ----------
+
+    data : array like
+        Trigger signal
+    threshold : single value
+        Threshold for trigger
+    edge : boolean 0 or 1
+        0 = rising edge
+        1 = falling edge
+    
+    Returns
+    -------
+
+    position : int
+        index of trigger point
+
+    """
+    if not isinstance(data, np.ndarray):
+        data = np.array(data)
+        
+    sign = data >= threshold
+    search = np.round(fftconvolve(sign, [1, -1]))
+
+    if edge == 0:
+        position = int(np.min(np.where(search == 1)[0]))
+    else:
+        position = int(np.min(np.where(search == -1)[0]))
+
+    return position
 
 def find_numbers(strings: list[str], tail: int=1):
     """

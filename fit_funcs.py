@@ -4,33 +4,58 @@ Generic fitting functions
 
 import numpy as np
 from scipy.optimize import curve_fit
-from scipy.signal import fftconvolve
 
-def blackman(N: int):
+def dbl_exp_decay(x, y_0, T1, T2):
     """
-    Generates blackman window
-
+    Generates approximate T1 decay with given parameters
+    
     Parameters
     ----------
 
-    N : array_like
-        Length of window
-    
+    x : 1D array 
+        Positional arguments for gaussian
+    y_0 : Single value
+        Y intercept / start of decay profile
+    T1 : Single value
+        T1 lifetime of excited state
+    T2 : Single value
+        Additional dephasing term of excited state
+    off : single value
+        Offset of the data
+
     Returns
     -------
 
-    out : 1-D array
-        y values as a function of x
-
+    1D array of height values for the positional arguments given in x
     """
-    if not N % 2:
-        N += 1
 
-    n = np.arange(N)
+    return 0.5 * y_0 * (np.exp(-x/T1) + np.exp(-x/T2))
 
-    return 0.42 - 0.5 * np.cos(2*np.pi * n / (N-1)) + 0.08 * np.cos(4 * np.pi * n / (N-1))
+def exp_decay(x, y_0, T1):
+    """
+    Generates approximate T1 decay with given parameters
+    
+    Parameters
+    ----------
 
-def fitgauss(x: list[float], amp: float, params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
+    x : 1D array 
+        Positional arguments for gaussian
+    y_0 : Single value
+        Y intercept / start of decay profile
+    T1 : Single value
+        T1 lifetime of excited state
+    off : single value
+        Offset of the data
+
+    Returns
+    -------
+
+    1D array of height values for the positional arguments given in x
+    """
+
+    return y_0 * np.exp(-x/T1)
+
+def fit_gauss(x: list[float], amp: float, params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
     """
     Returns seperate x-y Gaussian parameters from fit to 2D gaussian data
     (height, centre_x, width_x, centre_y, width_y)
@@ -69,7 +94,7 @@ def fitgauss(x: list[float], amp: float, params=None, meth=None, lims:tuple=(-np
 
     return fit, fit_err
             
-def fitgls(x:list[float], amp:float, params=None, meth=None, lims=(-np.inf, np.inf)):
+def fit_gls(x:list[float], amp:float, params=None, meth=None, lims=(-np.inf, np.inf)):
     """
     Fits data to a Voigt profile using the GLS method
     
@@ -103,7 +128,7 @@ def fitgls(x:list[float], amp:float, params=None, meth=None, lims=(-np.inf, np.i
 
     return fit, fit_err
 
-def fitlorentz(x:list[float], y:list[float], params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
+def fit_lorentz(x:list[float], y:list[float], params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
     """
     Fits data to a Lorentzian function
     
@@ -137,7 +162,7 @@ def fitlorentz(x:list[float], y:list[float], params=None, meth=None, lims:tuple=
 
     return fit, fit_err
 
-def fitNgauss(x:list[float], y:list[float], params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
+def fit_Ngauss(x:list[float], y:list[float], params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
     """
     Fits data to a collection of Gaussians
     
@@ -171,7 +196,7 @@ def fitNgauss(x:list[float], y:list[float], params=None, meth=None, lims:tuple=(
 
     return fit, fit_err
 
-def fitstraight(x:list[float], y:list[float], params=None, meth=None, lims=(-np.inf, np.inf)):
+def fit_straight(x:list[float], y:list[float], params=None, meth=None, lims=(-np.inf, np.inf)):
     """
     Fits data to a straight line function
     
@@ -202,6 +227,76 @@ def fitstraight(x:list[float], y:list[float], params=None, meth=None, lims=(-np.
     """
 
     fit, success = curve_fit(straight, x, y, p0=params, method=meth, bounds=lims)
+    fit_err = np.sqrt(np.diag(success))
+
+    return fit, fit_err
+
+def fit_exp_decay(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
+    """
+    Fits data to an approximate T1 decay curve
+    
+    Parameters
+    ----------
+
+    x : 1D array 
+        x values of orginal data
+    y : 1D array
+        y values corresponding to x values
+    params : 1D array, optional
+        Guess values for T1 decay; y_0, T1
+    meth : Single string {'lm', 'trf', 'dogbox'}, optional
+        Method to use for optimisation. See 
+        scipy.optimize.curve_fit for details
+    bounds : 2-tuple of array_like, optional
+        Lower and upper bounds on parameters. Defaults to 
+        no bounds. 
+        See scipy.optimize.curve_fit for details
+
+    Returns
+    -------
+
+    fit : 1D array
+        Fitted variables
+    fit_err : 1D array
+        Uncertainty in fitted variables
+    """
+
+    fit, success = curve_fit(exp_decay, x, y, p0=params, method=meth, bounds=lims)
+    fit_err = np.sqrt(np.diag(success))
+
+    return fit, fit_err
+
+def fit_dbl_exp_decay(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
+    """
+    Fits data to an approximate double exponetial decay curve
+    
+    Parameters
+    ----------
+
+    x : 1D array 
+        x values of orginal data
+    y : 1D array
+        y values corresponding to x values
+    params : 1D array, optional
+        Guess values for T1 decay; y_0, T1
+    meth : Single string {'lm', 'trf', 'dogbox'}, optional
+        Method to use for optimisation. See 
+        scipy.optimize.curve_fit for details
+    bounds : 2-tuple of array_like, optional
+        Lower and upper bounds on parameters. Defaults to 
+        no bounds. 
+        See scipy.optimize.curve_fit for details
+
+    Returns
+    -------
+
+    fit : 1D array
+        Fitted variables
+    fit_err : 1D array
+        Uncertainty in fitted variables
+    """
+
+    fit, success = curve_fit(dbl_exp_decay, x, y, p0=params, method=meth, bounds=lims)
     fit_err = np.sqrt(np.diag(success))
 
     return fit, fit_err
@@ -257,37 +352,6 @@ def lorentzian(x:list[float], amp:float, y_0:float, x_0:float, gamma:float):
 
     """
     return (amp * ((0.5*gamma)**2/((x-x_0)**2 + (0.5*gamma)**2))) + y_0
-
-def moving_av(N, type:str='square'):
-    """
-    Generates moving average window of type
-
-    Parameters
-    ----------
-
-    N : array_like
-        Length of window
-    type : string
-        Type of window to use:
-        Square
-        Gaussian
-        Blackman
-    
-    Returns
-    -------
-
-    out : 1-D array
-        y values as a function of x
-
-    """
-    if type == 'square':
-        window = np.ones(N)
-    if type == 'gaussian':
-        window = gaussian(np.arange(N), 1, 0, N/2, (N-1)/5)
-    if type == 'blackman':
-        window = blackman(N)
-
-    return window / np.sum(window)
 
 def N_gaussian(x:list[float], *params):
     """
@@ -361,32 +425,6 @@ def pseudo_voigt(x:list[float], y_0:float, amp_g:float, x_0g:float,
 
     return pv
 
-def sinc_filter(N, fc):
-    """
-    Generates sinc filter with length N and frequency fc
-
-    Parameters
-    ----------
-
-    N : array_like
-        Length of filter
-    fc : single value
-        frequency
-
-    Returns
-    -------
-
-    out : 1-D array
-        y values as a function of x
-
-    """
-    if not N % 2:
-        N += 1
-
-    n = np.arange(N)
-
-    return np.sinc(2 * fc * (n - (N-1)/2))
-
 def straight(x, a, b):
     """
     Generates straight line function with given parameters.
@@ -409,85 +447,3 @@ def straight(x, a, b):
 
     """
     return [a*value + b for value in x]
-
-def low_pass(N, fc):
-    """
-    Generates low-pass windowed since for filtering data above the cut-off
-    frequency.
-
-    Parameters
-    ----------
-
-    N : array_like
-        Length of filter
-    fc : single value
-        frequency cut-off
-    
-    Returns
-    -------
-
-    out : 1-D array
-        y values as a function of x
-
-    """
-    if not N % 2:
-        N += 1
-
-    low_pass = blackman(N) * sinc_filter(N, fc)
-
-    return low_pass / np.sum(low_pass)
-
-def high_pass(N, fc):
-    """
-    Generates high-pass windowed sinc for filtering data below the cut-off
-    frequency.
-
-    Parameters
-    ----------
-
-    N : array_like
-        Length of filter
-    fc : single value
-        frequency cut-off
-    
-    Returns
-    -------
-
-    out : 1-D array
-        y values as a function of x
-
-    """
-    if not N % 2:
-        N += 1
-
-    high_pass =  blackman(N) * sinc_filter(N, fc)
-    high_pass = high_pass / np.sum(high_pass)
-    high_pass = -high_pass
-    high_pass[(N-1)//2] += 1
-
-    return high_pass
-
-def band_pass(N_low, low, N_high, high):
-    """
-    Generates band-pass windowed sinc for filtering data.
-
-    Parameters
-    ----------
-
-    N_low : array_like
-        Length of filter
-    fc : single value
-        frequency cut-off
-    
-    Returns
-    -------
-
-    out : 1-D array
-        y values as a function of x
-
-    """
-
-    bpf = fftconvolve(low_pass(N_low, low), high_pass(N_high, high))
-    bpf = bpf / np.sum(bpf)
-
-    return bpf

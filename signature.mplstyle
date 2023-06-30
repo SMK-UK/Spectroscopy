@@ -1,13 +1,14 @@
 ### FIGURE
 text.color: .15
 
+figure.figsize : 8, 5
 figure.facecolor: white
 figure.dpi: 80
 figure.titlesize: 16
 figure.titleweight: bold
 
 ### LINES
-lines.linewidth: 0.85
+lines.linewidth: 1
 lines.solid_capstyle: round
 
 ### PATCHES
