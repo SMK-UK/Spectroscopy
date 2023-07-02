@@ -5,7 +5,7 @@ Generic fitting functions
 import numpy as np
 from scipy.optimize import curve_fit
 
-def dbl_exp_decay(x, y_0, T1, T2):
+def dbl_exp_decay(x, y_1, y_2, T1, T2, offset):
     """
     Generates approximate T1 decay with given parameters
     
@@ -29,9 +29,9 @@ def dbl_exp_decay(x, y_0, T1, T2):
     1D array of height values for the positional arguments given in x
     """
 
-    return 0.5 * y_0 * (np.exp(-x/T1) + np.exp(-x/T2))
+    return y_1 * np.exp(-x/T1) + y_2 * np.exp(-x/T2) + offset
 
-def exp_decay(x, y_0, T1):
+def exp_decay(x, y_0, T1, offset):
     """
     Generates approximate T1 decay with given parameters
     
@@ -53,7 +53,75 @@ def exp_decay(x, y_0, T1):
     1D array of height values for the positional arguments given in x
     """
 
-    return y_0 * np.exp(-x/T1)
+    return y_0 * np.exp(-x/T1) + offset
+
+def fit_dbl_exp_decay(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
+    """
+    Fits data to an approximate double exponetial decay curve
+    
+    Parameters
+    ----------
+
+    x : 1D array 
+        x values of orginal data
+    y : 1D array
+        y values corresponding to x values
+    params : 1D array, optional
+        Guess values for T1 decay; y_0, T1
+    meth : Single string {'lm', 'trf', 'dogbox'}, optional
+        Method to use for optimisation. See 
+        scipy.optimize.curve_fit for details
+    bounds : 2-tuple of array_like, optional
+        Lower and upper bounds on parameters. Defaults to 
+        no bounds. 
+        See scipy.optimize.curve_fit for details
+
+    Returns
+    -------
+
+    fit : 1D array
+        Fitted variables
+    fit_err : 1D array
+        Uncertainty in fitted variables
+    """
+    fit, success = curve_fit(dbl_exp_decay, x, y, p0=params, method=meth, bounds=lims)
+    fit_err = np.sqrt(np.diag(success))
+
+    return fit, fit_err
+
+def fit_exp_decay(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
+    """
+    Fits data to an approximate T1 decay curve
+    
+    Parameters
+    ----------
+
+    x : 1D array 
+        x values of orginal data
+    y : 1D array
+        y values corresponding to x values
+    params : 1D array, optional
+        Guess values for T1 decay; y_0, T1
+    meth : Single string {'lm', 'trf', 'dogbox'}, optional
+        Method to use for optimisation. See 
+        scipy.optimize.curve_fit for details
+    bounds : 2-tuple of array_like, optional
+        Lower and upper bounds on parameters. Defaults to 
+        no bounds. 
+        See scipy.optimize.curve_fit for details
+
+    Returns
+    -------
+
+    fit : 1D array
+        Fitted variables
+    fit_err : 1D array
+        Uncertainty in fitted variables
+    """
+    fit, success = curve_fit(exp_decay, x, y, p0=params, method=meth, bounds=lims)
+    fit_err = np.sqrt(np.diag(success))
+
+    return fit, fit_err
 
 def fit_gauss(x: list[float], amp: float, params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
     """
@@ -225,78 +293,7 @@ def fit_straight(x:list[float], y:list[float], params=None, meth=None, lims=(-np
     fit_err : 1D array
         Uncertainty in fitted variables
     """
-
     fit, success = curve_fit(straight, x, y, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
-
-def fit_exp_decay(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to an approximate T1 decay curve
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    y : 1D array
-        y values corresponding to x values
-    params : 1D array, optional
-        Guess values for T1 decay; y_0, T1
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
-    """
-
-    fit, success = curve_fit(exp_decay, x, y, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
-
-def fit_dbl_exp_decay(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits data to an approximate double exponetial decay curve
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    y : 1D array
-        y values corresponding to x values
-    params : 1D array, optional
-        Guess values for T1 decay; y_0, T1
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
-    """
-
-    fit, success = curve_fit(dbl_exp_decay, x, y, p0=params, method=meth, bounds=lims)
     fit_err = np.sqrt(np.diag(success))
 
     return fit, fit_err
@@ -324,6 +321,7 @@ def gaussian(x:list[float], amp:float, y_0:float, x_0:float, sigma:float):
 
     1D array of height values for the positional arguments given in x
     """
+
     return amp * np.exp(-((x - x_0) ** 2) / (2 * sigma ** 2)) + y_0
 
 def lorentzian(x:list[float], amp:float, y_0:float, x_0:float, gamma:float):
@@ -446,4 +444,4 @@ def straight(x, a, b):
         y values as a function of x
 
     """
-    return [a*value + b for value in x]
+    return a*x + b
