@@ -9,7 +9,7 @@ update plotter to take strings in order to change colours
 '''
 from math import log
 import matplotlib.pyplot as mp
-from natsort import natsorted
+from natsort import natsorted, os_sorted
 import numpy as np
 import os, re
 import pandas as pd
@@ -35,11 +35,12 @@ def bin_data(data: list[float], N: int = 10):
 
     mean : mean value of data in longest bin
     """
-    bin_width = (max(data) - min(data)) / N
     minimum = min(data)
-    edge = minimum + bin_width
-    binned = [[x for x in data if x > (edge * i) and 
-                x < (edge * (i + 1))] for i in range(N)]
+    maximum = max(data)
+    bin_width = (maximum - minimum) / N
+    bins = np.linspace(minimum, maximum, N+1) 
+    binned = [[x for x in data if x > (bins[i]) and x < (bins[i+1])]
+             for i in range(N)]
 
     return sum(find_longest(binned)[0]) / find_longest(binned)[1]
 
@@ -295,13 +296,13 @@ def dir_interogate(path: str, extensions: tuple[str,...] = (),
     """
     folder_list = []
     file_list = []
-
     for root, dirs, files in natsorted(os.walk(path)):
+
         if dirs:
+            dirs = natsorted(dirs)
             if not folders:
                 folder_list = dirs
             else:
-                print(dirs)
                 folder_list = [folder for folder in dirs 
                                if folder in folders]
             if exceptions:
@@ -321,20 +322,59 @@ def dir_interogate(path: str, extensions: tuple[str,...] = (),
                 temp_files = [file for file in temp_files
                               if file.endswith(extensions)]
             if temp_files:
-                file_list.append(temp_files)
+                file_list.append(natsorted(temp_files))
 
     if len(file_list) == 1:
         file_list = [file_name for sublist in file_list
                      for file_name in sublist]
-
-    return natsorted(folder_list), file_list
+    
+    return folder_list, file_list
 
 def excel_extract(folder_names: list[str], file_names: list[list[str]],
                   average: bool=False):
-
+    # TO DO : make this work for spectrscopy data and test the speed compared to text parse
     return [[open_excel(os.path.join(folder, file)) for file in file_names[index]] for index, folder in enumerate(folder_names)]
 
-def find_trigger(data, threshold, edge: int = 0):
+def find_tau(y: list[float], x: list[float]=[], modifier: float=0.9):
+    """
+    # TO DO - add functionality for working wih three or more pulses
+
+    Find the difference in time between two pulses and return
+    the indexes of these points.
+
+    Uses find_trigger
+
+    Parameters
+    ----------
+
+    y : array like
+        Pulsed signal
+    x : array like
+        Time data / data to calculate difference between pulses
+    modifier : single value
+        Threshold multiplier for trigger (percentage of maximum value of 
+        data)
+    
+    Returns
+    -------
+
+    centres : list of int
+        Indexes of centres of pulses
+    tau     : single value float
+        Difference between centres for x data
+
+    """
+    indexes = find_trigger(y, modifier, edge='both')
+    indexes = np.sort(indexes)
+    pulses = len(indexes)//2
+    centres = [(indexes[(idx*2)+1] + indexes[idx*2])//2 for idx in range(pulses)]
+    if x:
+        tau = x[centres[1]] - x[centres[0]]
+        return tau, centres
+    else:
+        return centres
+    
+def find_trigger(data, modifier: float=0.9, edge: str='rise'):
     """
     Find rising or falling edge of a trigger signal
 
@@ -343,11 +383,13 @@ def find_trigger(data, threshold, edge: int = 0):
 
     data : array like
         Trigger signal
-    threshold : single value
-        Threshold for trigger
-    edge : boolean 0 or 1
-        0 = rising edge
-        1 = falling edge
+    modifier : single value
+        Threshold multiplier for trigger (percentage of maximum value of 
+        data)
+    edge : rise, fall, both
+        rise = rising edge
+        fall = falling edge
+        both = all edges
     
     Returns
     -------
@@ -358,15 +400,25 @@ def find_trigger(data, threshold, edge: int = 0):
     """
     if not isinstance(data, np.ndarray):
         data = np.array(data)
+    
+    if modifier:
+        threshold = np.max(data) * modifier
+    else:
+        threshold = np.max(data) * 0.9
+    
         
     sign = data >= threshold
     search = np.round(fftconvolve(sign, [1, -1]))
 
-    if edge == 0:
+    if edge == 'rise':
         position = int(np.min(np.where(search == 1)[0]))
+    elif edge == 'fall':
+        position = int(np.max(np.where(search == -1)[0]))
     else:
-        position = int(np.min(np.where(search == -1)[0]))
-
+        rising = np.where(search == 1)[0]
+        falling = np.where(search == -1)[0]
+        position = np.append(rising, falling)
+        
     return position
 
 def find_numbers(strings: list[str], tail: int=1):
@@ -523,7 +575,7 @@ def open_excel(path: str, seperators: str=','):
     
     Returns
     -------
-    excel_data : pandas data frame 
+    excel_data : list of column data from pandas data frame
     
     """
     temp_df = pd.read_csv(path, sep=seperators)
@@ -648,7 +700,7 @@ def plotter(x_data, y_data, data_indexes=[], keys:list=[], shifter: int|float=0,
         if sec_axis:
             sec_ax = ax.secondary_xaxis('top', functions=
                                         (lambda x: 1e7/x, lambda x: 1e7/x))
-            sec_ax.set_xlabel('Wavenumber (cm$^{-1}$)')
+            sec_ax.set_xlabel('Wavelength (nm)')
         if woi:
             for  vline in woi:
                 ax.axvline(x=vline, linestyle='-.')
@@ -771,28 +823,11 @@ def split_lists(data_sets):
 
     return data_lists
 
-def truncate(data:list[float], lims:tuple):
-    """
-    truncate data to remove superfluos data
-
-    Parameters
-    ----------
-
-    data : list / array - data to perform zoom
-    bounds : tuple - lower and upper bounds of the region to truncate
-
-    Returns
-    -------
-
-    truncated data array
-    """
-    lower, upper = zoom(data, lims)
-
-    return np.array(data)[lower:upper]
-
 def zero_data(data:list[float]):
 
-    return [value + min(data) for value in data]
+    minimum = min(data)
+
+    return [value - minimum for value in data]
 
 def zoom(data:list[float], bounds:tuple=()):
     """
@@ -809,13 +844,10 @@ def zoom(data:list[float], bounds:tuple=()):
 
     start, stop : start and stop index for the zoomed data
     """
-    start = 0
-    stop = -1
-    for index, value in enumerate(data):
-        if value <= bounds[0]:
-            start = index
-        if value <= bounds[1]:
-            stop = index
+
+    # TO DO - make into generic index finder
+    start = np.argmin(np.abs(np.asarray(data) - bounds[0]))
+    stop = np.argmin(np.abs(np.asarray(data) - bounds[1]))
 
     return start, stop
 

@@ -1,5 +1,8 @@
+import numpy as np
 import matplotlib.pyplot as mp
 import os, re
+
+mp.style.use('signature.mplstyle')
 
 class plotter:
 
@@ -22,7 +25,7 @@ class plotter:
         self.sec_yeq = (lambda x: x, lambda x: x)
         self.shift = 0
 
-    def display(self, zoom: bool=False, sec_x: bool=False, sec_y: bool=False):
+    def single(self, zoom: bool=False, sec_x: bool=False, sec_y: bool=False):
         """
         plot self.x and self.y with corresponding kwargs
 
@@ -57,12 +60,13 @@ class plotter:
 
         self.ax.plot(x, y, 'x', color=self.colour, linestyle=self.linestyle, 
                      marker=self.marker, alpha=self.alpha, label=self.label)
-        self.ax.grid(True, color='silver', linewidth=0.5)
 
         if self.label: 
             self.ax.legend(loc='best')
 
         mp.show()
+
+    #def twin(self, ):
 
     def save_fig(self, file_name:str, dir=None, fmt='png', res=80):
         """
@@ -103,24 +107,13 @@ class plotter:
         start, stop : start and stop index for the zoomed data
 
         """
-        x_start = 0
-        x_stop = -1
-        y_start = 0
-        y_stop = -1
-
-        if x_bounds != None:
-            for index, value in enumerate(self.x):
-                if value <= x_bounds[0]:
-                    x_start = index
-                if value <= x_bounds[1]:
-                    x_stop = index
-           
-        if y_bounds != None:
-            for index, value in enumerate(self.y):
-                if value <= y_bounds[0]:
-                    y_start = index
-                if value <= y_bounds[1]:
-                    y_stop = index
-
-        self.zoom_x = self.x[x_start:x_stop]
-        self.zoom_y = self.y[y_start:y_stop]
+        if x_bounds:
+            start = np.argmin(np.abs(np.asarray(self.x) - x_bounds[0]))
+            stop = np.argmin(np.abs(np.asarray(self.x) - x_bounds[1]))
+        
+        if y_bounds:
+            start = np.argmin(np.abs(np.asarray(self.y) - y_bounds[0]))
+            stop = np.argmin(np.abs(np.asarray(self.y) - y_bounds[1]))
+        
+        self.zoom_x = self.x[start:stop]
+        self.zoom_y = self.y[start:stop]      

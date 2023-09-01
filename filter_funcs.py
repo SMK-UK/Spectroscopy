@@ -168,3 +168,11 @@ def sinc_filter(N, fc):
     n = np.arange(N)
 
     return np.sinc(2 * fc * (n - (N-1)/2))
+
+def smooth_data(data, N: int=100, type:str='square'):
+
+    # create a boxcar window and then create a list of smoothed data
+    avg_window = moving_av(N, type)
+    length_window = avg_window.shape[0] // 2
+    
+    return fftconvolve(avg_window, data)[length_window-1:-length_window]

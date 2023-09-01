@@ -29,7 +29,7 @@ def dbl_exp_decay(x, y_1, y_2, T1, T2, offset):
     1D array of height values for the positional arguments given in x
     """
 
-    return y_1 * np.exp(-x/T1) + y_2 * np.exp(-x/T2) + offset
+    return (y_1 * np.exp(-x/T1)) + (y_2 * np.exp(-x/T2)) + offset
 
 def exp_decay(x, y_0, T1, offset):
     """
@@ -53,7 +53,7 @@ def exp_decay(x, y_0, T1, offset):
     1D array of height values for the positional arguments given in x
     """
 
-    return y_0 * np.exp(-x/T1) + offset
+    return (y_0 * np.exp(-x/T1)) + offset
 
 def fit_dbl_exp_decay(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
     """
@@ -123,14 +123,9 @@ def fit_exp_decay(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
 
     return fit, fit_err
 
-def fit_gauss(x: list[float], amp: float, params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
+def fit_gauss(x: list[float], amp: list[float], params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
     """
-    Returns seperate x-y Gaussian parameters from fit to 2D gaussian data
-    (height, centre_x, width_x, centre_y, width_y)
-
-    Calls to moments(data) in order to extract relevant parameters of the 
-    2D gaussian data before finding the fit to the data. See scipy.optimize.curve_fit
-    for more on data fitting.
+    Fits a gaussian function to the data
 
     Parameters
     ----------
@@ -164,7 +159,7 @@ def fit_gauss(x: list[float], amp: float, params=None, meth=None, lims:tuple=(-n
             
 def fit_gls(x:list[float], amp:float, params=None, meth=None, lims=(-np.inf, np.inf)):
     """
-    Fits data to a Voigt profile using the GLS method
+    Fits a Voigt profile to the data using the GLS method
     
     Parameters
     ----------
@@ -198,7 +193,7 @@ def fit_gls(x:list[float], amp:float, params=None, meth=None, lims=(-np.inf, np.
 
 def fit_lorentz(x:list[float], y:list[float], params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
     """
-    Fits data to a Lorentzian function
+    Fits a Lorentzian function to the data
     
     Parameters
     ----------
@@ -232,7 +227,7 @@ def fit_lorentz(x:list[float], y:list[float], params=None, meth=None, lims:tuple
 
 def fit_Ngauss(x:list[float], y:list[float], params=None, meth=None, lims:tuple=(-np.inf, np.inf)):
     """
-    Fits data to a collection of Gaussians
+    Fits N number of Gaussian to the data
     
     Parameters
     ----------
@@ -266,7 +261,7 @@ def fit_Ngauss(x:list[float], y:list[float], params=None, meth=None, lims:tuple=
 
 def fit_straight(x:list[float], y:list[float], params=None, meth=None, lims=(-np.inf, np.inf)):
     """
-    Fits data to a straight line function
+    Fits a straight line function to the data to 
     
     Parameters
     ----------
