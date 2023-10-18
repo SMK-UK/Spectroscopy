@@ -21,28 +21,34 @@ c = 299792458
 # TODO incorporate numpy arrays and conditionals to deal with numpy arrays
 # in functions
 
-def bin_data(data: list[float], N: int = 10):
+
+
+def bin_data(data: list[float], N: int=10):
     """
-    Bin list of data and return mean
+    Average a list of data or bin the data and return mean
     
     Parameters
     ----------
 
-    data : list of data to bin
+    data : list of data to average
 
     Returns
     -------
 
-    mean : mean value of data in longest bin
+    x : average or mean value of data
     """
-    minimum = min(data)
-    maximum = max(data)
-    bin_width = (maximum - minimum) / N
-    bins = np.linspace(minimum, maximum, N+1) 
-    binned = [[x for x in data if x > (bins[i]) and x < (bins[i+1])]
-             for i in range(N)]
+    if N != 0:
+        minimum = min(data)
+        maximum = max(data)
+        bins = np.linspace(minimum, maximum, N+1) 
+        binned = [[x for x in data if x > (bins[i]) and x < (bins[i+1])]
+                for i in range(N)]
+        
+        mean = sum(find_longest(binned)[0]) / find_longest(binned)[1]
+    else:
+        mean = sum(data) * 1/len(data)
 
-    return sum(find_longest(binned)[0]) / find_longest(binned)[1]
+    return mean
 
 def converter(data: list[float]|float, d_type:int=1, 
               c_type:int = 0, scale:float = 1):
@@ -129,9 +135,30 @@ def check_len(data_lists: list[list]):
 
     return boolean, indexes
 
-def check_str(input_string: str):
+def check_str(string_one, string_two):
     """
     Checks string for certain characters and flag if true
+    
+    Parameters
+    ----------
+
+    string_one : string to check
+    string_two : string / characters to check against
+    flip : choose to flip the strings 
+
+    Returns
+    -------
+
+    Boolean
+    """
+    validation = set(string_one)
+    char_allow = set(string_two)
+   
+    return validation.issubset(char_allow)
+
+def check_digits(input_string: str):
+    """
+    Checks if a string contains only digits and flag if True
     
     Parameters
     ----------
@@ -405,8 +432,7 @@ def find_trigger(data, modifier: float=0.9, edge: str='rise'):
         threshold = np.max(data) * modifier
     else:
         threshold = np.max(data) * 0.9
-    
-        
+
     sign = data >= threshold
     search = np.round(fftconvolve(sign, [1, -1]))
 
@@ -421,7 +447,7 @@ def find_trigger(data, modifier: float=0.9, edge: str='rise'):
         
     return position
 
-def find_numbers(strings: list[str], tail: int=1):
+def find_numbers(string:str, pattern:str='-?\ *\d+\.?\d*(?:[Ee]\ *-?\ *\d+)?'):
     """
     Checks string for numbers
     
@@ -437,9 +463,13 @@ def find_numbers(strings: list[str], tail: int=1):
     """
     # will return combined values i.e. 187 will be returned '187' and not
     #'1', '8', '7'
-    
-    return [re.findall('\d+', os.path.split(string)[tail])[0]
-               for string in strings]
+    match_number = re.compile(pattern)
+    numbers = [x for x in re.findall(match_number, string)]
+
+    if len(numbers) == 1:
+        numbers = numbers[0]
+
+    return numbers
 
 def find_OD(y_values:list[float], peaks:list[int], lims:tuple=()):
     """
@@ -539,12 +569,12 @@ def open_data(path: str):
     with open(path, 'r', newline='') as raw_file:
     # cycle through each row in the file
         for row in raw_file:
-            # check for numerical data
-            if check_str(row) == True:
+            # check row for specific string / values
+            if check_digits(row) == True:
                 # generate list to populate with column data
                 data_temp = [i for i in re.split(r"[\t|,|;]", row)
                              if i != '' and i != '\r\n']
-                if data_list == 0:
+                if not data_list:
                     data_list = [[] for _ in range(len(data_temp))]
                 for index, data in enumerate(data_temp):
                     if len(data_list) < index + 1:
@@ -554,7 +584,7 @@ def open_data(path: str):
                 # extract metadata
                 metadata_temp = [i for i in re.split(r"[\t|,|;]", row)
                                  if i != '' and i != '\r\n']
-                if metadata_list == 0:
+                if not metadata_list:
                     # generate list to populate with column metadata
                     metadata_list = [[] for _ in range(len(metadata_temp))]
                 for index, metadata in enumerate(metadata_temp):
@@ -586,6 +616,41 @@ def open_excel(path: str, seperators: str=','):
 
     return excel_data
 
+def open_text(path: str):
+    """
+    Open a given file and read the first two columns to a list. Works with
+    columns of different length
+
+    Parameters
+    ----------
+    path : file path
+    
+    Returns
+    -------
+    data_list : list of data read from path
+    metadata_list : list of metadata read from path
+    
+    """
+    data_list = []
+    with open(path, 'r', newline='') as raw_file:
+    # cycle through each row in the file
+        for row in raw_file:
+            # generate list to populate with column data
+            data_temp = [i for i in re.split(r"[\t|,|;]", row)
+                            if i != '' and i != '\r\n']
+            if not data_list:
+                data_list = [[] for _ in range(len(data_temp))]
+            for index, data in enumerate(data_temp):
+                if len(data_list) < index + 1:
+                    data_list.append([])
+                data_list[index].append(data)
+        raw_file.close()
+
+        if len(data_list) == 1:
+            data_list = [data for sublist in data_list for data in sublist]
+
+    return data_list
+   
 def peak_find(x_data_sets: list[list[list[int|float]]], 
               y_data_sets: list[list[list[int|float]]], 
               prom_tol=None, top_tol=None, lims=None):
@@ -738,6 +803,8 @@ def plotter(x_data, y_data, data_indexes=[], keys:list=[], shifter: int|float=0,
             fig.savefig(fname=name, dpi=res, format='png', bbox_inches='tight')
     
 def read_files(folder_list, file_list):
+    # TO DO - deprecated as of latest update - check occoruences and remove.
+    # Replace with new search_paths functionality
     """
     Create file path in a folder for parsing data in the file
 
@@ -788,48 +855,39 @@ def search_paths(paths: list, keys: tuple[str,...]):
 
     return key_paths, excluded_paths
 
-def process_data(data_set:list[float], ):
+def stdev(data:list, N: int=10):
     """
-
+    return the variance of a population set
+    
     Parameters
     ----------
 
-    data_set_parent : 2D data array / list to perform shift on
-    sigma : smoothing parameter
+    data : list of data to calculate variance
 
     Returns
     -------
 
-    smoothed_sets : list of smoothed data
+    variance : variance of data
     """
-    smoothed_sets = [gaussian_filter(data, sigma) for data in data_set]
+    mean = bin_data(data, N)
 
-    return smoothed_sets
-
-def split_lists(data_sets):
-    """
-    Split lists of lists of lists into constituent parts: ie. a 4 x 16 x 2 list will be returned as two 4 x 16 x 1 lists
-    data_sets dimensionality: [Polarisations:[Temperature:[x,y]]]
-
-    Parameters
-    ----------
-
-    data_sets : 3D data array / list to perform spit
-
-    Returns
-    -------
-
-    data_lists : separated lists
-    """
-
-    data_lists = [[[[temperatures[0]] for temperatures in polarizations] for polarizations in data_sets]]
-    for i in range(len(data_sets[0][0])-1):
-        data_lists.append([[[temperatures[i+1]] for temperatures in polarizations] for polarizations in data_sets])
-
-    return data_lists
+    return np.sqrt(sum([(mean - x)**2 for x in data]) * 1/len(data))
 
 def zero_data(data:list[float]):
+    """
+    subtract minimum value (negative) from a data set to shift all 
+    values above zero
 
+    Parameters
+    ----------
+
+    data : list / array - data to perform shift
+
+    Returns
+    -------
+
+    data with values shifted by the minimum value
+    """
     minimum = min(data)
 
     return [value - minimum for value in data]
@@ -855,23 +913,3 @@ def zoom(data:list[float], bounds:tuple=()):
     stop = np.argmin(np.abs(np.asarray(data) - bounds[1]))
 
     return start, stop
-
-class ListCalc:
-
-    def __init__(self, x_data:list[float], y_data:list[float]):
-
-        def addition(self):
-
-            return [x+y for x, y in zip(x_data, y_data)]
-        
-        def subtraction(self):
-
-            return [x-y for x, y in zip(x_data, y_data)]
-        
-        def mulitplication(self):
-
-            return [x*y for x, y in zip(x_data, y_data)]
-        
-        def division(self):
-        
-            return [x/y for x, y in zip(x_data, y_data)]
