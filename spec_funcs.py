@@ -670,7 +670,7 @@ def peak_freq(peaks_parent:list[list[list[float]]],
 
 def plotter(x_data, y_data, data_indexes=[], keys:list=[], shifter: int|float=0,
             axis_lbls=None, sec_axis=True, save=False, 
-            data_labels=[], lims:tuple=(), woi=None, res=80):
+            data_labels=[], lims:tuple=(), woi:list=[], res=80):
     """
     zoom in on a particular area of interest in a dataset
 
@@ -702,26 +702,27 @@ def plotter(x_data, y_data, data_indexes=[], keys:list=[], shifter: int|float=0,
                                         (lambda x: 1e7/x, lambda x: 1e7/x))
             sec_ax.set_xlabel('Wavelength (nm)')
         if woi:
-            for  vline in woi:
-                ax.axvline(x=vline, linestyle='-.')
+            for woi_set in woi:
+                for vline in woi_set[0]:
+                    ax.axvline(x=vline, linestyle=woi_set[1], color=woi_set[2], linewidth='2')
 
         shift = 0
-        for n, x in enumerate(x_data[m]):
+        for o, x in enumerate(x_data[m]):
             x = np.array(x)
-            y = np.array([value + shift for value in y_data[m][n]])
-            colour = mp.cm.winter(np.linspace(0, 1, len(x_data[m])))
+            y = np.array([value + shift for value in y_data[m][o]])
+            plot_colour = mp.cm.winter(np.linspace(0, 1, len(x_data[m])))
             if lims:
                 lower, upper = zoom(x, lims)
             if data_labels:
-                data_lbl = os.path.split(data_labels[n])[1]
-            ax.plot(x[lower:upper], y[lower:upper], color=colour[n],
+                data_lbl = os.path.split(data_labels[o])[1]
+            ax.plot(x[lower:upper], y[lower:upper], color=plot_colour[o],
                     linestyle='-', linewidth=0.8, alpha=1, label=data_lbl)
             if data_indexes:
-                data_index = np.array([i for i in data_indexes[m][n]
+                data_index = np.array([i for i in data_indexes[m][o]
                             if i >= lower and i <= upper])
                 if data_index.size > 0:
                     ax.plot(x[data_index], y[data_index], marker='x',
-                            color=colour[n], linestyle='None', alpha=1,
+                            color=plot_colour[o], linestyle='None', alpha=1,
                             label='_nolegend_')
             shift += shifter
 
@@ -753,12 +754,15 @@ def read_files(folder_list, file_list):
     """
     path = []
     for index, folder in enumerate(folder_list):
+        files = []
         for file in file_list[index]:
-           path.append(os.path.join(folder, file))
-    
-    return path
+            files.append(os.path.join(folder, file))
+        
+        path.append(files)
 
-def search_paths(paths, keys):
+    return path
+    
+def search_paths(paths: list, keys: tuple[str,...]):
     """
     Search paths for keys and then extract the file pathnames
 
@@ -772,6 +776,7 @@ def search_paths(paths, keys):
     -------
 
     key_paths : list of requested path names
+    excluded_paths : list of other path names
     """
     key_paths = []
     excluded_paths = []
