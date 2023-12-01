@@ -170,7 +170,26 @@ def sinc_filter(N, fc):
     return np.sinc(2 * fc * (n - (N-1)/2))
 
 def smooth_data(data, N: int=100, type:str='square'):
+    """
+    Generates sinc filter with length N and frequency fc
 
+    Parameters
+    ----------
+
+    data : input array of data to be smoothed    
+    N : array_like
+        Length of filter
+    type : string - name of smoothing function
+        Square
+        Gaussian
+        Blackman
+    
+    Returns
+    -------
+
+    out : 1-D array of data smoothed
+
+    """
     # create a boxcar window and then create a list of smoothed data
     avg_window = moving_av(N, type)
     length_window = avg_window.shape[0] // 2

@@ -595,6 +595,28 @@ def open_data(path: str):
 
     return data_list, metadata_list
 
+def excel_to_numpy(path: str, seperators: str=','):
+    """
+    Open a given excel / csv file and generate list
+
+    Parameters
+    ----------
+    path : file path
+    
+    Returns
+    -------
+    excel_data : list of column data from pandas data frame
+    
+    """
+    temp_df = pd.read_csv(path, sep=seperators)
+    excel_data = [temp_df[x].to_numpy() for x in temp_df]
+
+    if len(excel_data) == 1:
+        excel_data = [value for sublist in excel_data for value in sublist]
+
+    return excel_data
+
+>>>>>>> functions
 def open_excel(path: str, seperators: str=','):
     """
     Open a given excel / csv file and generate list
@@ -609,7 +631,11 @@ def open_excel(path: str, seperators: str=','):
     
     """
     temp_df = pd.read_csv(path, sep=seperators)
+<<<<<<< HEAD
     excel_data = [temp_df[x].values.tolist() for x in temp_df]
+=======
+    excel_data = [temp_df[x].tolist() for x in temp_df]
+>>>>>>> functions
 
     if len(excel_data) == 1:
         excel_data = [value for sublist in excel_data for value in sublist]
@@ -650,7 +676,11 @@ def open_text(path: str):
             data_list = [data for sublist in data_list for data in sublist]
 
     return data_list
+<<<<<<< HEAD
    
+=======
+
+>>>>>>> functions
 def peak_find(x_data_sets: list[list[list[int|float]]], 
               y_data_sets: list[list[list[int|float]]], 
               prom_tol=None, top_tol=None, lims=None):
