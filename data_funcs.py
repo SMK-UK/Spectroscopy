@@ -170,8 +170,8 @@ def read_file(path: str) -> tuple:
     data_list : list of data read from path
     
     """
-    data_list = 0
-    metadata_list = 0
+    data_list = []
+    metadata_list = []
     with open(path, 'r', newline='') as raw_file:
     # cycle through each row in the file
         for row in raw_file:
@@ -201,7 +201,42 @@ def read_file(path: str) -> tuple:
 
     return metadata_list, data_list
 
-def search_paths(folders: list[str], files: list[str], include: list[str], exclude: list[str] = []) -> list[str]:
+def open_text(path: str):
+    """
+    Open a given file and read the first two columns to a list. Works with
+    columns of different length
+
+    Parameters
+    ----------
+    path : file path
+    
+    Returns
+    -------
+    data_list : list of data read from path
+    metadata_list : list of metadata read from path
+    
+    """
+    data_list = []
+    with open(path, 'r', newline='') as raw_file:
+    # cycle through each row in the file
+        for row in raw_file:
+            # generate list to populate with column data
+            data_temp = [i for i in re.split(r"[\t|,|;]", row)
+                            if i != '' and i != '\r\n']
+            if not data_list:
+                data_list = [[] for _ in range(len(data_temp))]
+            for index, data in enumerate(data_temp):
+                if len(data_list) < index + 1:
+                    data_list.append([])
+                data_list[index].append(data)
+        raw_file.close()
+
+        if len(data_list) == 1:
+            data_list = [data for sublist in data_list for data in sublist]
+
+    return data_list
+
+def search_paths(folders: list[str], files: list[str], include: list[str] = [], exclude: list[str] = []) -> list[str]:
     """
     search a list of paths for keys and join files to folders
         
@@ -221,13 +256,19 @@ def search_paths(folders: list[str], files: list[str], include: list[str], exclu
         desired = []
         for file in files[index]:
             path = os.path.join(folder, file)
-            if any([x in path for x in include]):
+            if include:
+                if any([x in path for x in include]):
+                    desired.append(path)
+            else:
                 desired.append(path)
             if exclude:
                 desired = [x for x in desired
                                if not any([y in path for y in exclude])]
         if desired:
             paths.append(desired)
+
+    if len(paths) == 1:
+        paths = [data for sublist in paths for data in sublist]
 
     return paths
 
