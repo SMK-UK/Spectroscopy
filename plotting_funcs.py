@@ -7,7 +7,11 @@ Functions designed to plot data
 '''
 
 from math_funcs import zoom
+<<<<<<< HEAD
 from numpy import linspace, min
+=======
+from numpy import linspace
+>>>>>>> 6451c49e444eebae6b78a23313ff53f9ac92b610
 import matplotlib.pyplot as mp
 import os
 
@@ -30,6 +34,11 @@ def plot_spectra(x_data, y_data, data_indexes = [], keys = list[str], shifter: i
     """
 
     data_lbl = None
+<<<<<<< HEAD
+=======
+    lower = 0
+    upper = -1
+>>>>>>> 6451c49e444eebae6b78a23313ff53f9ac92b610
 
     for m, key in enumerate(keys):
         fig, ax = mp.subplots()
@@ -44,6 +53,7 @@ def plot_spectra(x_data, y_data, data_indexes = [], keys = list[str], shifter: i
         if woi:
             for woi_set in woi:
                 for vline in woi_set[0]:
+<<<<<<< HEAD
                     ax.axvline(x=vline, linestyle=woi_set[1], 
                                color=woi_set[2], linewidth='1')
         shift = 0
@@ -69,6 +79,22 @@ def plot_spectra(x_data, y_data, data_indexes = [], keys = list[str], shifter: i
             shift += shifter
 
         ax.legend(bbox_to_anchor=(1.01, 1), loc='best', fontsize=8)
+=======
+                    ax.axvline(x=vline, linestyle=woi_set[1], color=woi_set[2], linewidth='2')
+        shift = 0
+        for o, x in enumerate(x_data[m]):
+            y = y_data[m][o] + shift
+            plot_colour = mp.cm.winter(linspace(0, 1, len(x_data[m])))
+            if lims:
+                lower, upper = zoom(x, lims)
+            if data_labels:
+                data_lbl = os.path.split(data_labels[o])[1]
+            ax.plot(x[lower:upper], y[lower:upper], color=plot_colour[o],
+                    linestyle='-', linewidth=0.8, alpha=1, label=data_lbl)
+            shift += shifter
+
+        ax.legend(loc='best', fontsize=8)
+>>>>>>> 6451c49e444eebae6b78a23313ff53f9ac92b610
         fig.tight_layout()
 
         if save:

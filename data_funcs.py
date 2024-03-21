@@ -54,12 +54,16 @@ def check_digits(input_string: str) -> bool:
 
     return logical
 
-def dir_interogate(path: str, extensions: tuple[str, ...] = (), 
+def dir_interogate(path: str, 
+                   extensions: list[str] = [], 
                    exceptions: list[str] = [], 
                    folders: list[str] = []) -> tuple[list[str], list[str]]:
     """
     Interogate directory and extract all folders and files. Optional: 'extensions', 
     'exceptions' and 'folders' enables selective read of files and folders.
+
+    Only capable of extracting files that are nested once. Will not work for 
+    subfolders or extract files from the main directory.
 
     Parameters
     ----------
@@ -73,7 +77,7 @@ def dir_interogate(path: str, extensions: tuple[str, ...] = (),
     folder_list : list of folder names
     file_list : list of file names
 
-    """
+    """       
     folder_list = []
     file_list = []
     for root, dirs, files in natsorted(os.walk(path)):
@@ -101,8 +105,8 @@ def dir_interogate(path: str, extensions: tuple[str, ...] = (),
             else:
                 temp_files = [file for file in temp_files]
             if extensions:
-                temp_files = [file for file in temp_files
-                              if file.endswith(extensions)]
+                    temp_files = [file for file in temp_files
+                              if file.endswith(tuple(extensions))]
             if temp_files:
                 file_list.append(natsorted(temp_files))
 

@@ -8,31 +8,37 @@ Functions designed to perform mathematical operations on data
 
 import numpy as np
 from scipy.fftpack import fft, fftfreq
+from scipy.integrate import simpson
 
-<<<<<<< HEAD
+def average_arrays(list_of_arrays):
+    '''
+    Calculate the average for a list of numpy arrays
+    excluding any arrays that contain inf or nan values
+    
+    '''
+    temp = np.zeros_like(list_of_arrays[0])
+    count = 0
+    for array in list_of_arrays:
+        if not np.isinf(np.sum(array)) and not np.isnan(np.sum(array)):
+            temp += array
+            count += 1
+
+    return temp/count
+
 def bin_data(data, N: int = 10, edge: bool = False):
     """
     Bin the data and return mean
-=======
-def bin_data(data, N: int=10):
-    """
-    Average a list of data or bin the data and return mean
->>>>>>> 6451c49e444eebae6b78a23313ff53f9ac92b610
     
     Parameters
     ----------
 
     data : list of data to average
-<<<<<<< HEAD
     bins : number of bins to group data into
     edge : choose to include right or left edge of bin.
-=======
->>>>>>> 6451c49e444eebae6b78a23313ff53f9ac92b610
 
     Returns
     -------
 
-<<<<<<< HEAD
     mean : value of data
     """
     minimum = min(data)
@@ -41,24 +47,6 @@ def bin_data(data, N: int=10):
     binned = np.digitize(data, bins, right=edge)
 
     return data[binned == np.bincount(binned).argmax()].mean()
-=======
-    x : average or mean value of data
-    """
-    if N != 0:
-        minimum = np.min(data)
-        maximum = np.max(data)
-        bins = np.linspace(minimum, maximum, N+1) 
-        binned = [[x for x in data if x > (bins[i]) and x < (bins[i+1])]
-                for i in range(N)]
-        
-        a, b = find_longest(binned)
-        
-        mean = sum(a) / b
-    else:
-        mean = sum(data) * 1/len(data)
-
-    return mean
->>>>>>> 6451c49e444eebae6b78a23313ff53f9ac92b610
 
 def find_longest(data_list):
     """
@@ -103,6 +91,25 @@ def calc_fft(time, amplitude):
 
     return frequencies, fftd
 
+def normalise(dataset_1, dataset_2, reference=1):
+    """
+    Normalise a set of data by subtracting a control set and dividing by
+    a reference (optional).
+
+    Parameters
+    ----------
+    dataset_1 : data array to normalise
+    dataset_2 : control data to subtract
+    reference : reference data to divide by
+
+    Returns
+    -------
+    normalised dataset
+
+    """
+
+    return np.divide(np.subtract(dataset_1, dataset_2), reference)
+
 def OD_calc(ref_data, trans_data, c_factor: float=1):
     """
     Perform OD calculation for transmission data and adjust the reference
@@ -121,22 +128,14 @@ def OD_calc(ref_data, trans_data, c_factor: float=1):
     """
     return np.log((ref_data * c_factor)/trans_data)
 
-<<<<<<< HEAD
 def ODset_calc(reference_sets, transmitted_sets, c_factor: float=1):
-=======
-def ODset_calc(reference_sets, transmitted_sets, c_factor: float = 1):
->>>>>>> 6451c49e444eebae6b78a23313ff53f9ac92b610
 
     OD_sets = []
     for index in range(len(reference_sets)):
         OD_temp = []
         for reference in reference_sets[index]:
             for transmission in transmitted_sets[index]:
-<<<<<<< HEAD
                 OD_temp.append(OD_calc(reference, transmission, c_factor))
-=======
-                OD_temp.append(OD_calc(reference, transmission))
->>>>>>> 6451c49e444eebae6b78a23313ff53f9ac92b610
             OD_sets.append(OD_temp)
 
     return OD_sets
@@ -158,29 +157,4 @@ def zoom(data, bounds:tuple=()):
     start = np.argmin(abs(data - bounds[0]))
     stop = np.argmin(abs(data - bounds[1]))
 
-<<<<<<< HEAD
     return start, stop
-=======
-    return start, stop
-
-def data_shift(data, shift):
-    """
-    Perform a shift for each value in an array of data
-
-    Parameters
-    ----------
-    data_sets : array like 
-    shift : value to shift data by or array like
-
-    Returns
-    -------
-    shifted : list of shifted data 
-
-    """
-    if type(data) == list:
-        shifted = [x + shift for x in data]
-    else:
-        shifted = data + shift
-        
-    return shifted
->>>>>>> 6451c49e444eebae6b78a23313ff53f9ac92b610
