@@ -9,34 +9,28 @@ Functions designed to perform mathematical operations on data
 import numpy as np
 from scipy.fftpack import fft, fftfreq
 
-def bin_data(data, N: int=10):
+def bin_data(data, N: int = 10, edge: bool = False):
     """
-    Average a list of data or bin the data and return mean
+    Bin the data and return mean
     
     Parameters
     ----------
 
     data : list of data to average
+    bins : number of bins to group data into
+    edge : choose to include right or left edge of bin.
 
     Returns
     -------
 
-    x : average or mean value of data
+    mean : value of data
     """
-    if N != 0:
-        minimum = np.min(data)
-        maximum = np.max(data)
-        bins = np.linspace(minimum, maximum, N+1) 
-        binned = [[x for x in data if x > (bins[i]) and x < (bins[i+1])]
-                for i in range(N)]
-        
-        a, b = find_longest(binned)
-        
-        mean = sum(a) / b
-    else:
-        mean = sum(data) * 1/len(data)
+    minimum = min(data)
+    maximum = max(data)
+    bins = np.linspace(minimum, maximum, N+1) 
+    binned = np.digitize(data, bins, right=edge)
 
-    return mean
+    return data[binned == np.bincount(binned).argmax()].mean()
 
 def find_longest(data_list):
     """
@@ -129,24 +123,3 @@ def zoom(data, bounds:tuple=()):
     stop = np.argmin(abs(data - bounds[1]))
 
     return start, stop
-
-def data_shift(data, shift):
-    """
-    Perform a shift for each value in an array of data
-
-    Parameters
-    ----------
-    data_sets : array like 
-    shift : value to shift data by or array like
-
-    Returns
-    -------
-    shifted : list of shifted data 
-
-    """
-    if type(data) == list:
-        shifted = [x + shift for x in data]
-    else:
-        shifted = data + shift
-        
-    return shifted

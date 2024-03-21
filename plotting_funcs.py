@@ -7,7 +7,7 @@ Functions designed to plot data
 '''
 
 from math_funcs import zoom
-from numpy import linspace
+from numpy import linspace, min
 import matplotlib.pyplot as mp
 import os
 
@@ -30,8 +30,6 @@ def plot_spectra(x_data, y_data, data_indexes = [], keys = list[str], shifter: i
     """
 
     data_lbl = None
-    lower = 0
-    upper = -1
 
     for m, key in enumerate(keys):
         fig, ax = mp.subplots()
@@ -46,20 +44,31 @@ def plot_spectra(x_data, y_data, data_indexes = [], keys = list[str], shifter: i
         if woi:
             for woi_set in woi:
                 for vline in woi_set[0]:
-                    ax.axvline(x=vline, linestyle=woi_set[1], color=woi_set[2], linewidth='2')
+                    ax.axvline(x=vline, linestyle=woi_set[1], 
+                               color=woi_set[2], linewidth='1')
         shift = 0
         for o, x in enumerate(x_data[m]):
-            y = y_data[m][o] + shift
+            
             plot_colour = mp.cm.winter(linspace(0, 1, len(x_data[m])))
             if lims:
                 lower, upper = zoom(x, lims)
+                x = x[lower:upper]
+                y = y_data[m][o][lower:upper]
+            else:
+                y = y_data[m][o]
+            y -= (min(y) - shift)
             if data_labels:
                 data_lbl = os.path.split(data_labels[o])[1]
-            ax.plot(x[lower:upper], y[lower:upper], color=plot_colour[o],
-                    linestyle='-', linewidth=0.8, alpha=1, label=data_lbl)
+            ax.plot(x, y, color=plot_colour[o],
+                    linestyle='-', alpha=0.8, label=data_lbl)
+            if data_indexes:
+                ax.plot(x[data_indexes[m][o]], y[data_indexes[m][o]], 
+                        color='red',
+                   marker='x', linestyle='None', alpha=1, 
+                   label='_nolegend_')     
             shift += shifter
 
-        ax.legend(loc='best', fontsize=8)
+        ax.legend(bbox_to_anchor=(1.01, 1), loc='best', fontsize=8)
         fig.tight_layout()
 
         if save:

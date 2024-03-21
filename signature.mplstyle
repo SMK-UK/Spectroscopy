@@ -8,8 +8,9 @@ figure.titlesize: 12
 figure.titleweight: bold
 
 ### LINES
-lines.linewidth: 1
+lines.linewidth: 0.8
 lines.solid_capstyle: round
+lines.markersize: 5
 
 ### PATCHES
 patch.facecolor: 0072B2
