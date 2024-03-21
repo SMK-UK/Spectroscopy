@@ -3,7 +3,7 @@ Generic smoothing and filtering functions
 '''
 
 from scipy.signal import fftconvolve
-from fit_funcs import gaussian
+from functions.fitting_functions import gaussian
 import numpy as np
 
 def band_pass(N_low, low, N_high, high):
@@ -171,26 +171,6 @@ def sinc_filter(N, fc):
 
 def smooth_data(data, N: int=100, type:str='square'):
     """
-<<<<<<< HEAD
-    Smooth data using a moving average function
-
-    Parameters
-    ----------
-
-    data : array_like - data to smooth
-    N : Length of window
-    type : string
-        Type of window to use:
-        Square
-        Gaussian
-        Blackman
-    
-    Returns
-    -------
-
-    out : 1-D array
-        y values as a function of x
-=======
     Generates sinc filter with length N and frequency fc
 
     Parameters
@@ -208,7 +188,6 @@ def smooth_data(data, N: int=100, type:str='square'):
     -------
 
     out : 1-D array of data smoothed
->>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
 
     """
     # create a boxcar window and then create a list of smoothed data

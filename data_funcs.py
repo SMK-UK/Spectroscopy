@@ -54,13 +54,24 @@ def check_digits(input_string: str) -> bool:
 
     return logical
 
+<<<<<<< HEAD
 def dir_interogate(path: str, extensions: tuple[str, ...] = (), 
+=======
+def dir_interogate(path: str, 
+                   extensions: list[str] = [], 
+>>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
                    exceptions: list[str] = [], 
                    folders: list[str] = []) -> tuple[list[str], list[str]]:
     """
     Interogate directory and extract all folders and files. Optional: 'extensions', 
     'exceptions' and 'folders' enables selective read of files and folders.
 
+<<<<<<< HEAD
+=======
+    Only capable of extracting files that are nested once. Will not work for 
+    subfolders or extract files from the main directory.
+
+>>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
     Parameters
     ----------
     path : string - main folder / directory to interrogate
@@ -73,7 +84,11 @@ def dir_interogate(path: str, extensions: tuple[str, ...] = (),
     folder_list : list of folder names
     file_list : list of file names
 
+<<<<<<< HEAD
     """
+=======
+    """       
+>>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
     folder_list = []
     file_list = []
     for root, dirs, files in natsorted(os.walk(path)):
@@ -101,8 +116,13 @@ def dir_interogate(path: str, extensions: tuple[str, ...] = (),
             else:
                 temp_files = [file for file in temp_files]
             if extensions:
+<<<<<<< HEAD
                 temp_files = [file for file in temp_files
                               if file.endswith(extensions)]
+=======
+                    temp_files = [file for file in temp_files
+                              if file.endswith(tuple(extensions))]
+>>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
             if temp_files:
                 file_list.append(natsorted(temp_files))
 
@@ -170,8 +190,13 @@ def read_file(path: str) -> tuple:
     data_list : list of data read from path
     
     """
+<<<<<<< HEAD
     data_list = 0
     metadata_list = 0
+=======
+    data_list = []
+    metadata_list = []
+>>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
     with open(path, 'r', newline='') as raw_file:
     # cycle through each row in the file
         for row in raw_file:
@@ -201,7 +226,46 @@ def read_file(path: str) -> tuple:
 
     return metadata_list, data_list
 
+<<<<<<< HEAD
 def search_paths(folders: list[str], files: list[str], include: list[str], exclude: list[str] = []) -> list[str]:
+=======
+def open_text(path: str):
+    """
+    Open a given file and read the first two columns to a list. Works with
+    columns of different length
+
+    Parameters
+    ----------
+    path : file path
+    
+    Returns
+    -------
+    data_list : list of data read from path
+    metadata_list : list of metadata read from path
+    
+    """
+    data_list = []
+    with open(path, 'r', newline='') as raw_file:
+    # cycle through each row in the file
+        for row in raw_file:
+            # generate list to populate with column data
+            data_temp = [i for i in re.split(r"[\t|,|;]", row)
+                            if i != '' and i != '\r\n']
+            if not data_list:
+                data_list = [[] for _ in range(len(data_temp))]
+            for index, data in enumerate(data_temp):
+                if len(data_list) < index + 1:
+                    data_list.append([])
+                data_list[index].append(data)
+        raw_file.close()
+
+        if len(data_list) == 1:
+            data_list = [data for sublist in data_list for data in sublist]
+
+    return data_list
+
+def search_paths(folders: list[str], files: list[str], include: list[str] = [], exclude: list[str] = []) -> list[str]:
+>>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
     """
     search a list of paths for keys and join files to folders
         
@@ -221,7 +285,14 @@ def search_paths(folders: list[str], files: list[str], include: list[str], exclu
         desired = []
         for file in files[index]:
             path = os.path.join(folder, file)
+<<<<<<< HEAD
             if any([x in path for x in include]):
+=======
+            if include:
+                if any([x in path for x in include]):
+                    desired.append(path)
+            else:
+>>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
                 desired.append(path)
             if exclude:
                 desired = [x for x in desired
@@ -229,6 +300,12 @@ def search_paths(folders: list[str], files: list[str], include: list[str], exclu
         if desired:
             paths.append(desired)
 
+<<<<<<< HEAD
+=======
+    if len(paths) == 1:
+        paths = [data for sublist in paths for data in sublist]
+
+>>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
     return paths
 
 def seperate_lists(list_to_split):
