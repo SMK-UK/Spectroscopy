@@ -1,8 +1,13 @@
 '''
 Specific functions for handling spectroscopy data and analysing
-'''
 
-import os
+TO DO:
+
+convert this to a general class
+update plotter to take strings in order to change colours
+
+'''
+from math import log
 import matplotlib.pyplot as mp
 from natsort import natsorted, os_sorted
 import numpy as np
@@ -10,6 +15,75 @@ import os, re
 import pandas as pd
 from scipy.fftpack import ifft, fft, fftfreq
 from scipy.signal import find_peaks, fftconvolve
+
+c = 299792458
+
+# TODO incorporate numpy arrays and conditionals to deal with numpy arrays
+# in functions
+
+
+
+def bin_data(data: list[float], N: int=10):
+    """
+    Average a list of data or bin the data and return mean
+    
+    Parameters
+    ----------
+
+    data : list of data to average
+
+    Returns
+    -------
+
+    x : average or mean value of data
+    """
+    if N != 0:
+        minimum = min(data)
+        maximum = max(data)
+        bins = np.linspace(minimum, maximum, N+1) 
+        binned = [[x for x in data if x > (bins[i]) and x < (bins[i+1])]
+                for i in range(N)]
+        
+        mean = sum(find_longest(binned)[0]) / find_longest(binned)[1]
+    else:
+        mean = sum(data) * 1/len(data)
+
+    return mean
+
+def converter(data: list[float]|float, d_type:int=1, 
+              c_type:int = 0, scale:float = 1):
+    """
+    Convert list or single value from wavelength, frequency 
+    or wavenumber to another.
+    
+    Parameters
+    ----------
+
+    data : list of lists
+    d_type : Input data type
+    0: wavenumber
+    1: frequency
+    2: wavelength
+    c_type : Output data type
+    0: wavenumber
+    1: frequency
+    2: wavelength
+    scale : scaling factor
+
+    Returns
+    -------
+
+    converted : list of converted values
+    """
+    if type(data) == float or int:
+        convert = [data]
+    else:
+        convert = data
+        
+    converted = []
+    wavelengths = []
+
+=======
 
 c = 299792458
 
@@ -164,40 +238,235 @@ def check_digits(input_string: str):
     -------
 
     logical : Boolean
-        True or False  
     """
+    # check input string for digits and flag True
     if any(char.isdigit() for char in input_string) == True:
-        # search input_string for any of the following characters
+        # search input_string for any of the following characters 
+        # and spaces / indents
         char_allow = set("0123456789\n\t\r eE-+,.;")
         validation = set((input_string))
+        # check if any allowed characters in the input string
         logical = validation.issubset(char_allow)
     else:
         logical = False
 
     return logical
 
-def check_len(lists):
+def data_extract(paths: list[str], keys: list[str]=[], tail: int=1, 
+                include: bool=True):
     """
-    Checks nested list for each list lengths
-    
+    search a given path or list of paths for strings and extract the data
+    from selected files depending on the discriminator (keys)
+
     Parameters
     ----------
 
-    lists : list of lists
+    paths : file paths / path
+    keys : list of key values to search for in path if required
+    tail : int value 1 or 0 to search head or tail of path
+    function : True or False to include the data with key or exclude
+    
+    Returns
+    -------
+
+    extracted_data : list of data read from path
+    extracted_metadata : list of metadata read from path
+    
+    """
+    extracted_data = []
+    extracted_metadata = []
+    if keys:
+        for key in keys:
+            extracted_data_children = []
+            extracted_metadata_children = []
+            for path in paths:
+                if include == True:
+                    # extract data from path if it contains the key
+                    if key in os.path.split(path)[tail]:
+                        extracted_data_children.append(open_data(path)[0])
+                        extracted_metadata_children.append(open_data(path)[1])
+                    else:
+                        continue
+                else:
+                    if key in os.path.split(path)[tail]:
+                        # extract data from path if it doesn't contain the key
+                        extracted_data_children.append(open_data(path)[0])
+                        extracted_metadata_children.append(open_data(path)[1])
+                    else:
+                        continue
+            extracted_data.append(extracted_data_children)
+            extracted_metadata.append(extracted_metadata_children)
+    else:
+        for path in paths:
+            extracted_data.append(open_data(path)[0])
+            extracted_metadata.append(open_data(path)[1])
+
+    return extracted_data, extracted_metadata
+
+def data_fft(time: list[float], amplitude: list[float]):
+    """
+    Perform FFT calculation for amplitude component and generate the frequency
+    from times.
+
+    Parameters
+    ----------
+
+    time : 1D data array / list to use as reference
+    amplitude : 1D data array / list of transmission data
 
     Returns
     -------
 
-    boolean : True or False value depending on if the lists are all the same length
-    lengths : list or single value of lengths for each list in lists
-        True or False  
+    frequencies : list of frequency values from input time data
+    ffts : list of fft calculated from input amplitude data
     """
-    check = [len(data) for group in lists for data in group]
-    lengths = [x for x in set(check)]
-    # if only one length all lengths are the same so boolean is True
-    if len(lengths) == 1:
-        boolean = True
-        indexes = None
+    N = len(time)
+    T = time[1] - time[0]
+    fftd = fft(amplitude)
+    frequencies = fftfreq(N, T)
+
+    return frequencies, fftd
+
+def data_shift(data_sets: list[list[list[int]]], shift: int|float):
+    """
+    Perform a shift for each value in a list of data
+
+    Parameters
+    ----------
+
+    data_sets : 2D data array / list to perform shift on
+    shift : value to shift data by
+
+    Returns
+    -------
+
+    shifted_sets : list of shifted data 
+    """
+    return [[[value + shift for value in data_set_child]
+                    for data_set_child in data_sets[index]] for 
+                    index in range(len(data_sets))]
+
+def df_average(data_frames: list):
+    """
+    Average a set of data frames and return the averaged
+    data frame
+    
+    Parameters
+    ----------
+
+    data_frames : list of data frames to average  
+
+    Returns
+    -------
+
+    averaged_data : data frame containing the averaged data from
+    data_frames
+    """
+    summed = 0
+    for data_frames_child in data_frames:
+        summed += data_frames_child
+
+    return summed / len(data_frames)
+
+def dir_interogate(path: str, extensions: tuple[str,...] = (), 
+                   exceptions: tuple[str,...] = (), 
+                   folders: tuple[str,...] = ()):
+    """
+    Interogate directory and extract all folders and files with 
+    the specified extensions
+
+    Parameters
+    ----------
+
+    path : string - main folder / directory to interrogate
+    exts : tuple / list - file extensions to check for in directory
+    exceptions : tuple / list - file extensions / strings to exclude
+    folders : list - selected folders to extract from
+
+    Returns
+    -------
+
+    folder_list : list of folder names
+    file_list : list of file names
+
+    """
+    folder_list = []
+    file_list = []
+    for root, dirs, files in natsorted(os.walk(path)):
+
+        if dirs:
+            dirs = natsorted(dirs)
+            if not folders:
+                folder_list = dirs
+            else:
+                folder_list = [folder for folder in dirs 
+                               if folder in folders]
+            if exceptions:
+                folder_list = [folder for folder in folder_list
+                               if not any([x in folder for x in exceptions])]
+
+        if not dirs:
+            temp_files = []
+            if not folders:
+                temp_files = files
+            elif any([x in os.path.split(root) for x in folders]):
+                temp_files = files
+            if exceptions:
+                temp_files = [file for file in temp_files
+                              if not any([x in file for x in exceptions])]
+            if extensions:
+                temp_files = [file for file in temp_files
+                              if file.endswith(extensions)]
+            if temp_files:
+                file_list.append(natsorted(temp_files))
+
+    if len(file_list) == 1:
+        file_list = [file_name for sublist in file_list
+                     for file_name in sublist]
+    
+    return folder_list, file_list
+
+def excel_extract(folder_names: list[str], file_names: list[list[str]],
+                  average: bool=False):
+    # TO DO : make this work for spectrscopy data and test the speed compared to text parse
+    return [[open_excel(os.path.join(folder, file)) for file in file_names[index]] for index, folder in enumerate(folder_names)]
+
+def find_tau(y: list[float], x: list[float]=[], modifier: float=0.9):
+    """
+    # TO DO - add functionality for working wih three or more pulses
+
+    Find the difference in time between two pulses and return
+    the indexes of these points.
+
+    Uses find_trigger
+
+    Parameters
+    ----------
+
+    y : array like
+        Pulsed signal
+    x : array like
+        Time data / data to calculate difference between pulses
+    modifier : single value
+        Threshold multiplier for trigger (percentage of maximum value of 
+        data)
+    
+    Returns
+    -------
+
+    centres : list of int
+        Indexes of centres of pulses
+    tau     : single value float
+        Difference between centres for x data
+
+    """
+    indexes = find_trigger(y, modifier, edge='both')
+    indexes = np.sort(indexes)
+    pulses = len(indexes)//2
+    centres = [(indexes[(idx*2)+1] + indexes[idx*2])//2 for idx in range(pulses)]
+    if x:
+        tau = x[centres[1]] - x[centres[0]]
+        return tau, centres
     else:
         return centres
     
@@ -395,6 +664,7 @@ def open_data(path: str):
 
     return data_list, metadata_list
 
+
 def excel_to_numpy(path: str, seperators: str=','):
     """
     Open a given excel / csv file and generate list
@@ -430,7 +700,8 @@ def open_excel(path: str, seperators: str=','):
     
     """
     temp_df = pd.read_csv(path, sep=seperators)
-    excel_data = [temp_df[x].tolist() for x in temp_df]
+
+    excel_data = [temp_df[x].values.tolist() for x in temp_df]
 
     if len(excel_data) == 1:
         excel_data = [value for sublist in excel_data for value in sublist]
@@ -471,7 +742,7 @@ def open_text(path: str):
             data_list = [data for sublist in data_list for data in sublist]
 
     return data_list
-
+  
 def peak_find(x_data_sets: list[list[list[int|float]]], 
               y_data_sets: list[list[list[int|float]]], 
               prom_tol=None, top_tol=None, lims=None):
