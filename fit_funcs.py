@@ -5,11 +5,7 @@ Generic fitting functions
 from math_funcs import zoom
 import numpy as np
 from scipy.optimize import curve_fit
-<<<<<<< HEAD
-from scipy.signal import find_peaks
-=======
 from scipy.signal import find_peaks, fftconvolve
->>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
 
 def dbl_exp_decay(x, y_1, y_2, T1, T2, offset):
     """
@@ -445,72 +441,7 @@ def gaussian(x, amp:float, y_0:float, x_0:float, sigma:float):
 
     return amp * np.exp(-((x - x_0) ** 2) / (2 * sigma ** 2)) + y_0
 
-<<<<<<< HEAD
-def rise_time(t, amp, t_0, t_r):
-    """
-    Generates Lorentzian function with given parameters.
-
-    Parameters
-    ----------
-
-    x : array_like
-        Input range of frequencies
-    amp : single value
-        Height of peak
-    y_0 : Single value
-        Y offset
-    x_0 : single value
-        Central frequency of Lorentzian
-    gamma : single value
-        FWHM of Lorentzian
-    
-    Returns
-    -------
-
-    out : 1-D array
-        Output amplitudes as function of x
-
-    """
-    return amp * (1 - np.exp(-(t-t_0)/t_r))
-
-def fit_rise_time(x, y, params=None, meth=None, lims=(-np.inf, np.inf)):
-    """
-    Fits a straight line function to the data to 
-    
-    Parameters
-    ----------
-
-    x : 1D array 
-        x values of orginal data
-    y : 1D array
-        y values corresponding to x values
-    params : 1D array, optional
-        Guess values for straight line; a, b
-    meth : Single string {'lm', 'trf', 'dogbox'}, optional
-        Method to use for optimisation. See 
-        scipy.optimize.curve_fit for details
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds on parameters. Defaults to 
-        no bounds. 
-        See scipy.optimize.curve_fit for details
-
-    Returns
-    -------
-
-    fit : 1D array
-        Fitted variables
-    fit_err : 1D array
-        Uncertainty in fitted variables
-    """
-    fit, success = curve_fit(rise_time, x, y, p0=params, method=meth, bounds=lims)
-    fit_err = np.sqrt(np.diag(success))
-
-    return fit, fit_err
-
-def lorentzian(x:list[float], amp:float, y_0:float, x_0:float, gamma:float):
-=======
 def lorentzian(x, amp:float, y_0:float, x_0:float, gamma:float):
->>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
     """
     Generates Lorentzian function with given parameters.
 
@@ -586,10 +517,6 @@ def peak_find(y, x=None, prom_tol=None, top_tol=None, lims=None):
     -------
 
     peaks_data : indexes of peaks for each data set
-<<<<<<< HEAD
-=======
-
->>>>>>> 1157bed486618d4b97a3c24721a673a05e366e0e
     """
     lower = 0
     upper = -1
