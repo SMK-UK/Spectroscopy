@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\keena\Documents\University\python_scripts\Spectroscopy\.spec_venv"
+VIRTUAL_ENV="C:\Users\sk88\Documents\Python\Spectroscopy\.spec_venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

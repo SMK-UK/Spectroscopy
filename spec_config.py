@@ -3,8 +3,8 @@ Config file for spectroscopy measurements
 
 """
 # Path to load data from and arguments used to disriminate files loaded
-root                = "C:/Users/keena/Desktop"
-file                = "0222_BB"
+root                = "C:/Users/sk88/Desktop"
+file                = "0222_BB_05"
 # file extension types
 exceptions          = ["notes", "setup", "ignore", "Thermal OD"]
 extensions          = ['.csv', '.txt', '.CSV']
