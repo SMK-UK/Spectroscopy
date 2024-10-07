@@ -19,7 +19,7 @@ correction = 70/32
 # averaging window length
 window = 50
 # single temp file?
-single = True
+single = False
 # numpy arrays used?
 numpy = True
 
