@@ -23,4 +23,11 @@ single = False
 # numpy arrays used?
 numpy = False
 
+# plot limits 
+limits = [6750,6300]
+# wavelengths of interest (1/cm)
+exp_levels = ([6459, 6554, 6568, 6639], '--','green')
+theory_levels = ([6417, 6467, 6535, 6575, 6643, 6661, 6725], '--','blue')
+ir_woi = [theory_levels, exp_levels]
+
 
