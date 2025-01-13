@@ -1,10 +1,16 @@
 # folder specific files
-cavity_spectrum.ipynb
-lscan_transmission.ipynb
-lscan_transmission.py
-class_test.py
-AOM characterisation.py
-test.ipynb
+*.json
+compressor.ipynb
+cryopower_measurements.ipynb
+PrYSO_3F3.ipynb
+rise_time.ipynb
+spec_config.py
+Trans_Analysis 1D2.ipynb
+Trans_Analysis 3F3.ipynb
+Trans_Analysis 3F4.ipynb
+Trans_Analysis 606.ipynb
+Trans_Analysis 1500.ipynb
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__
@@ -91,7 +97,7 @@ ipython_config.py
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to run in multiple environments; otherwise, check them in:
-.spect_venv
+.Spectroscopy
 
 # pipenv
 #   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
