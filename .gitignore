@@ -13,6 +13,7 @@ Trans_Analysis 1500.ipynb
 
 
 # Byte-compiled / optimized / DLL files
+*.pyc
 __pycache__
 
 # C extensions
