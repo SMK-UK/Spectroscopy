@@ -3,34 +3,20 @@ Config file for PrYVO IR measurements
 """
 
 # Path to load data from and arguments used to disriminate files loaded
-root                = "C:/Users/keena/Downloads/1909/WL/"
-file                = "IR"
+root                = r"C:\Users\keena\Downloads\0222_BB"
+file                = r"\0222_BB"
 # file extension types
-exceptions          = ["notes", "setup", "ignore", "Thermal OD"]
+exceptions          = ["notes", "setup"]
 extensions          = ['.csv', '.txt', '.CSV']
 # reference names
 refs                = ["ref", "reference", "R", "References"]
+# polarisations
+polarisations = ["86", "100", "110", "131"]
+# plot limits
+limits = [17500, 16000]
 # calibrate wavelength of OSA (nm)
 calibration = 1.054269203603
 # reference power correction
-correction = 345/50
+correction = 34/42
 # averaging window length
 window = 50
-
-# Wavelengths of interest
-
-woi = dict(
-
-    a = 1,
-
-),
-
-data_indexes = dict(
-
-    time = 0,
-    sp_trans = 1,
-    sp_ref = 2,
-    cp_trans = 3,
-    cp_ref = 4
-
-)
